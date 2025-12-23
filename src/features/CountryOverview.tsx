@@ -5,7 +5,11 @@ import { MacroSnapshot } from '../components/Dashboard/MacroSnapshot';
 import { LatestIntelligence } from '../components/Dashboard/LatestIntelligence';
 import { CountryDetail } from './CountryDetail';
 
-export const CountryOverview = () => {
+interface CountryOverviewProps {
+    desk?: 'FX' | 'RATES' | 'EM';
+}
+
+export const CountryOverview = ({ desk }: CountryOverviewProps) => {
     const [countries, setCountries] = useState<Country[]>([]);
     const [latestData, setLatestData] = useState<Record<string, MacroIndicator>>({});
     const [sortConfig, setSortConfig] = useState<{ key: 'RISK' | 'NAME'; direction: 'ASC' | 'DESC' }>({ key: 'RISK', direction: 'DESC' });
@@ -28,7 +32,14 @@ export const CountryOverview = () => {
     const getSortedAndFilteredCountries = () => {
         let result = [...countries];
 
-        // Filter
+        // Desk-based pre-filtering (Example logic)
+        if (desk === 'EM') {
+            result = result.filter(c => c.region !== 'G10');
+        } else if (desk === 'FX') {
+            // maybe show all or specific subset
+        }
+
+        // Region Filter
         if (filterRegion !== 'ALL') {
             result = result.filter(c => c.region === filterRegion);
         }
@@ -45,32 +56,42 @@ export const CountryOverview = () => {
         });
 
         return result;
-    }
+    };
 
     const toggleSort = () => {
         setSortConfig(prev => ({
             key: prev.key === 'RISK' ? 'NAME' : 'RISK',
             direction: 'DESC'
         }));
-    }
+    };
 
     const cycleFilter = () => {
-        const regions = ['ALL', 'LATAM', 'EMEA', 'ASIA'];
+        const regions = ['ALL', 'LATAM', 'EMEA', 'ASIA', 'G10'];
         const nextIdx = (regions.indexOf(filterRegion) + 1) % regions.length;
         setFilterRegion(regions[nextIdx]);
-    }
+    };
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: '24px' }}>
+            {/* Main Column: Sovereign Watchlist */}
             <div>
-                <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 className="text-xl">Sovereign Watchlist</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                    <div>
+                        <h1 className="text-2xl" style={{ fontWeight: '600' }}>
+                            {desk ? `${desk} Desk Monitor` : 'Sovereign Watchlist'}
+                        </h1>
+                        <p className="text-secondary">
+                            {desk
+                                ? `Real-time ${desk} market surveillance and opportunities`
+                                : 'Real-time monitoring of sovereign risk and macro divergence'}
+                        </p>
+                    </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <button className="btn" onClick={cycleFilter}>
                             Region: {filterRegion}
                         </button>
                         <button className="btn" onClick={toggleSort}>
-                            Sort: {sortConfig.key === 'RISK' ? 'Highest Risk' : 'Name'}
+                            Sort: {sortConfig.key === 'RISK' ? 'High Risk' : 'Name'}
                         </button>
                     </div>
                 </div>
@@ -89,21 +110,8 @@ export const CountryOverview = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', position: 'sticky', top: '24px', height: 'calc(100vh - 48px)' }}>
                 <LatestIntelligence />
-
-                <div className="panel">
-                    <div className="panel-header">AI Trade Brief</div>
-                    <div className="text-sm text-muted" style={{ lineHeight: '1.5' }}>
-                        <p style={{ marginBottom: '8px' }}>
-                            Global risk appetite is fading as US real rates hit new highs.
-                            EM FX carry trades are unwinding.
-                        </p>
-                        <div style={{ padding: '8px', background: 'rgba(218, 54, 51, 0.1)', borderLeft: '2px solid var(--status-critical)' }}>
-                            <strong>Recommendation:</strong> Reduce high-beta EM exposure (ZAR, TRY).
-                        </div>
-                    </div>
-                </div>
             </div>
 
             {selectedCountry && (

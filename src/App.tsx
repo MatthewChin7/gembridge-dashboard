@@ -45,7 +45,19 @@ function App() {
                     </div>
                 </header>
 
-                {renderContent()}
+                {/* Dynamic Content Area */}
+                <div style={{ padding: '24px', maxWidth: '1600px', margin: '0 auto' }}>
+
+                    {activeView === 'dashboard' && <CountryOverview />}
+                    {activeView === 'fx' && <CountryOverview desk="FX" />}
+                    {activeView === 'rates' && <CountryOverview desk="RATES" />}
+                    {activeView === 'em' && <CountryOverview desk="EM" />}
+
+                    {activeView === 'analytics' && <ComparativeAnalytics />}
+                    {activeView === 'signals' && <TradeSignals />}
+                    {activeView === 'calendar' && <EventCalendar />}
+                    {activeView === 'crisis' && <CrisisMonitor />}
+                </div>
             </main>
         </div>
     )

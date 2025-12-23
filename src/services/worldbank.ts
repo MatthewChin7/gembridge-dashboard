@@ -80,48 +80,48 @@ export const WorldBankService = {
                         date: new Date(`${year}-12-31`).toISOString(), // Anchor to end of year
 
                         // Activity
-                        gdpGrowth: val('GDP_GROWTH') ?? 0,
-                        nominalGdp: (val('NOMINAL_GDP') ?? 0) / 1e9,
-                        gdpPerCapita: val('GDP_PCAP') ?? 0,
-                        domesticDemandContribution: val('DOMESTIC_DEMAND') ?? 0,
-                        privateConsumption: val('PRIV_CONSUMPTION') ?? 0,
-                        fixedInvestment: val('FIXED_INVESTMENT') ?? 0,
-                        netExportsContribution: 0, // Need calc
-                        population: (val('POPULATION') ?? 0) / 1e6,
-
-                        // Prices
-                        cpiYoY: val('INFLATION') ?? 0,
-                        energyInCpi: 0, // Unavailable in WB
-                        policyRate: 0, // Unavailable in WB
-                        realInterestRate: val('REAL_RATE') ?? 0,
-                        exchangeRate: val('FX_RATE') ?? 0,
+                        gdpGrowth: getValue('NY.GDP.MKTP.KD.ZG'),
+                        nominalGdp: getValue('NY.GDP.MKTP.CD') ? getValue('NY.GDP.MKTP.CD')! / 1e9 : undefined, // BN USD
+                        gdpPerCapita: getValue('NY.GDP.PCAP.CD'),
+                        domesticDemandContribution: undefined, // WB doesn't provide this directly usually
+                        privateConsumption: getValue('NE.CON.PRVT.ZS'),
+                        fixedInvestment: getValue('NE.GDI.TOTL.ZS'),
+                        netExportsContribution: undefined,
+                        population: getValue('SP.POP.TOTL') ? getValue('SP.POP.TOTL')! / 1e6 : undefined, // Million
 
                         // External
-                        currentAccountToGdp: val('CURRENT_ACCOUNT') ?? 0,
-                        tradeBalanceVal: (val('TRADE_BALANCE') ?? 0) / 1e9,
-                        fdi: val('FDI') ?? 0,
-                        externalDebt: val('EXTERNAL_DEBT') ?? 0,
-                        fxReservesBillions: (val('FX_RESERVES') ?? 0) / 1e9,
-                        netIip: 0, // Unavailable
-                        importCoverage: val('IMPORT_COVER') ?? 0,
-                        araMetric: 0,
-                        netFuelExports: 0,
-                        breakevenOilCa: 0,
+                        currentAccountToGdp: getValue('BN.CAB.XOKA.GD.ZS'),
+                        tradeBalanceVal: getValue('BN.CAB.XOKA.CD') ? getValue('BN.CAB.XOKA.CD')! / 1e9 : undefined,
+                        fdi: getValue('BX.KLT.DINV.WD.GD.ZS'),
+                        externalDebt: getValue('DT.DOD.DECT.GN.ZS'),
+                        fxReservesBillions: getValue('FI.RES.TOTL.CD') ? getValue('FI.RES.TOTL.CD')! / 1e9 : undefined, // BN USD
+                        netIip: undefined,
+                        importCoverage: getValue('FI.RES.TOTL.MO'),
+                        araMetric: undefined,
+                        netFuelExports: undefined,
+                        breakevenOilCa: undefined,
 
                         // Fiscal
-                        fiscalBalance: val('FISCAL_BALANCE') ?? 0,
-                        primaryBalance: 0,
-                        govDebtToGdp: val('GOV_DEBT') ?? 0,
-                        oilGasRevenue: 0,
-                        energySubsidies: 0,
-                        breakevenOilFiscal: 0,
+                        fiscalBalance: getValue('GC.BAL.CASH.GD.ZS'), // Cash surplus/def
+                        primaryBalance: undefined,
+                        govDebtToGdp: getValue('GC.DOD.TOTL.GD.ZS'), // Central gov debt
+                        oilGasRevenue: getValue('NY.GDP.PETR.RT.ZS'), // Oil rents % GDP as proxy?
+                        energySubsidies: undefined,
+                        breakevenOilFiscal: undefined,
+
+                        // Monetary & Prices
+                        cpiYoY: getValue('FP.CPI.TOTL.ZG'),
+                        energyInCpi: undefined,
+                        exchangeRate: getValue('PA.NUS.FCRF'),
+                        policyRate: undefined, // WB doesn't have pol rates usually
+                        realInterestRate: getValue('FR.INR.RINR'),
 
                         // Banking
-                        bankCapitalToAssets: val('BANK_CAPITAL') ?? 0,
-                        loansToDeposits: 0,
-                        creditGrowth: val('CREDIT_GROWTH') ?? 0,
-                        creditRating: 'N/A',
-                        ratingOutlook: 'Stable'
+                        bankCapitalToAssets: getValue('FB.BNK.CAPA.ZS'),
+                        loansToDeposits: undefined,
+                        creditGrowth: undefined,
+                        creditRating: undefined, // Qualitative
+                        ratingOutlook: undefined,
                     } as MacroIndicator;
                 });
 
