@@ -10,10 +10,15 @@ export const Heatmap = ({ data, metric }: HeatmapProps) => {
     const sortedData = [...data].sort((a, b) => (b.indicator[metric] as number) - (a.indicator[metric] as number));
 
     const getColor = (value: number) => {
-        // Basic heatmap logic - needs refinement for specific metrics
-        // Assuming for now higher is "hotter" or more extreme
-        // This is just a visual demo
-        return 'var(--bg-tertiary)';
+        // Heatmap color scale logic
+        // Higher values = RED (Risk)
+        // Lower values = GREEN (Safe/Growth) depending on metric
+
+        // Normalize roughly 0-10 scale for demo
+        if (value > 8) return '#da3633'; // Red
+        if (value > 5) return '#d29922'; // Orange
+        if (value > 2) return '#238636'; // Green
+        return '#388bfd'; // Blue/Neutral
     };
 
     return (

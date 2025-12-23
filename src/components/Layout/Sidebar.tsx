@@ -17,10 +17,12 @@ export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
     return (
         <aside className="sidebar">
             <div style={{ padding: '20px', borderBottom: '1px solid var(--bg-tertiary)' }}>
-                <div className="text-xl" style={{ fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-                    ANTIGRAVITY
-                </div>
-                <div className="text-sm text-muted" style={{ marginTop: '4px' }}>
+                <img
+                    src="/src/assets/logo.png"
+                    alt="Gembridge"
+                    style={{ height: '32px', marginBottom: '8px' }}
+                />
+                <div className="text-sm text-muted">
                     MACRO TRADER
                 </div>
             </div>

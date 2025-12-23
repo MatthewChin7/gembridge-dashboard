@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { SignalService } from '../../services/api';
-import { TradeSignal } from '../../types';
-import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
+import { SignalService } from '../services/api';
+import { TradeSignal } from '../types';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
 export const TradeSignals = () => {
     const [signals, setSignals] = useState<TradeSignal[]>([]);

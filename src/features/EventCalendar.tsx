@@ -1,4 +1,4 @@
-import { Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 export const EventCalendar = () => {
     // Mock calendar events

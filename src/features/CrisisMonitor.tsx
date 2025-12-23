@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { MacroService } from '../../services/api';
-import { Country, MacroIndicator } from '../../types';
-import { ShieldAlert, Activity, GitCommit } from 'lucide-react';
+import { MacroService } from '../services/api';
+import { Country, MacroIndicator } from '../types';
+import { ShieldAlert } from 'lucide-react';
 
 export const CrisisMonitor = () => {
     const [highRiskCountries, setHighRiskCountries] = useState<(Country & { data: MacroIndicator })[]>([]);
@@ -81,8 +81,8 @@ export const CrisisMonitor = () => {
 
                             <div style={{ display: 'flex', gap: '12px', fontSize: '12px' }}>
                                 <div style={{ flex: 1 }}>
-                                    <div className="text-muted">Ext. Debt/GDP</div>
-                                    <div style={{ fontWeight: 600 }}>{c.data.debtToGdp.toFixed(1)}%</div>
+                                    <div className="text-muted">Gov. Debt/GDP</div>
+                                    <div className="text-xl" style={{ fontWeight: 700 }}>{c.data.govDebtToGdp.toFixed(0)}%</div>
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <div className="text-muted">Reserves</div>

@@ -9,6 +9,7 @@ export const COUNTRIES: Country[] = [
     { id: 'MXN', name: 'Mexico', region: 'LATAM', currency: 'MXN', riskScore: 35 },
     { id: 'IDN', name: 'Indonesia', region: 'ASIA', currency: 'IDR', riskScore: 40 },
     { id: 'ARG', name: 'Argentina', region: 'LATAM', currency: 'ARS', riskScore: 92 },
+    { id: 'EGY', name: 'Egypt', region: 'EMEA', currency: 'EGP', riskScore: 78 },
 ];
 
 // Helper to generate a time series
@@ -16,18 +17,49 @@ const generateSeries = (countryId: string, periods: number): MacroIndicator[] =>
     const data: MacroIndicator[] = [];
     let baseCPI = countryId === 'TUR' ? 60 : countryId === 'ARG' ? 150 : 4;
     let baseGDP = 2.5;
-    let baseReserves = 50;
 
     for (let i = 0; i < periods; i++) {
         data.push({
             countryId,
             date: subMonths(new Date(), i).toISOString(),
             gdpGrowth: baseGDP + (Math.random() * 2 - 1),
+            nominalGdp: 400 + (Math.random() * 50),
+            gdpPerCapita: 12000,
+            domesticDemandContribution: 2.1,
+            privateConsumption: 3.5,
+            fixedInvestment: 4.0,
+            netExportsContribution: -0.5,
+            population: 85,
+
             cpiYoY: baseCPI + (Math.random() * 5 - 2),
-            fxReservesBillions: baseReserves - (Math.random() * 2), // Trending down for drama
-            debtToGdp: 60 + (Math.random() * 5),
-            currentAccountToGdp: -2 + (Math.random()),
-            policyRate: baseCPI + 2, // Positive real rates usually
+            energyInCpi: 15,
+            policyRate: baseCPI + 2,
+            realInterestRate: 2,
+            exchangeRate: 18.5,
+
+            fxReservesBillions: 35 - (Math.random() * 2),
+            importCoverage: 4.5,
+            currentAccountToGdp: -3.2 + Math.random(),
+            tradeBalanceVal: -12.5,
+            fdi: 2.1,
+            externalDebt: 45,
+            netIip: -25,
+            araMetric: 95,
+            netFuelExports: -1.2,
+            breakevenOilCa: 75,
+
+            govDebtToGdp: 88 + (Math.random() * 5),
+            fiscalBalance: -6.5,
+            primaryBalance: 1.2,
+            oilGasRevenue: 5,
+            energySubsidies: 2.4,
+            breakevenOilFiscal: 85,
+
+            bankCapitalToAssets: 14.5,
+            loansToDeposits: 85,
+            creditGrowth: 12,
+            creditRating: 'B',
+            ratingOutlook: 'Stable'
         });
     }
     return data;
@@ -35,7 +67,7 @@ const generateSeries = (countryId: string, periods: number): MacroIndicator[] =>
 
 export const MACRO_DATA: Record<string, MacroIndicator[]> = {};
 COUNTRIES.forEach(c => {
-    MACRO_DATA[c.id] = generateSeries(c.id, 24); // 2 years of monthly data
+    MACRO_DATA[c.id] = generateSeries(c.id, 120); // 10 years of monthly data
 });
 
 export const NEWS_FEED: NewsEvent[] = [
