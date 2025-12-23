@@ -48,25 +48,25 @@ export const MacroSnapshot = ({ country, data }: MacroSnapshotProps) => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <Metric
                     label="GDP Growth"
-                    value={`${formatNumber(data.gdpGrowth)}%`}
-                    trend={data.gdpGrowth > 0 ? 'up' : 'down'}
-                    color={getTrafficLight(data.gdpGrowth, 'GDP')}
+                    value={`${formatNumber(data.gdpGrowth ?? 0)}%`}
+                    trend={(data.gdpGrowth ?? 0) > 0 ? 'up' : 'down'}
+                    color={getTrafficLight(data.gdpGrowth ?? 0, 'GDP')}
                 />
                 <Metric
                     label="Inflation (CPI)"
-                    value={`${formatNumber(data.cpiYoY)}%`}
-                    trend={data.cpiYoY > 5 ? 'up' : 'down'} // Inflation up is usually bad
+                    value={`${formatNumber(data.cpiYoY ?? 0)}%`}
+                    trend={(data.cpiYoY ?? 0) > 5 ? 'up' : 'down'} // Inflation up is usually bad
                     // Inverted logic for color: High inflation is red
-                    color={getTrafficLight(data.cpiYoY, 'CPI') === 'red' ? 'var(--accent-red)' : 'var(--accent-green)'}
+                    color={getTrafficLight(data.cpiYoY ?? 0, 'CPI') === 'red' ? 'var(--accent-red)' : 'var(--accent-green)'}
                 />
                 <Metric
                     label="Real Rates"
-                    value={`${formatNumber(data.policyRate - data.cpiYoY)}%`}
+                    value={`${formatNumber((data.policyRate ?? 0) - (data.cpiYoY ?? 0))}%`}
                     trend="flat"
                 />
                 <Metric
                     label="FX Reserves"
-                    value={`$${formatNumber(data.fxReservesBillions, 0)}B`}
+                    value={`$${formatNumber(data.fxReservesBillions ?? 0, 0)}B`}
                     trend="down"
                 />
             </div>

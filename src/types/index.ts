@@ -25,48 +25,48 @@ export interface MacroIndicator {
     date: string; // ISO Date
 
     // Activity & Output
-    gdpGrowth: number; // Real GDP % y/y
-    nominalGdp: number; // USD bn
-    gdpPerCapita: number; // USD
-    domesticDemandContribution: number; // pp [NEW]
-    privateConsumption: number; // % y/y
-    fixedInvestment: number; // % y/y
-    netExportsContribution: number; // pp [NEW]
-    population: number; // million
+    gdpGrowth?: number; // Real GDP % y/y
+    nominalGdp?: number; // USD bn
+    gdpPerCapita?: number; // USD
+    domesticDemandContribution?: number; // pp [NEW]
+    privateConsumption?: number; // % y/y
+    fixedInvestment?: number; // % y/y
+    netExportsContribution?: number; // pp [NEW]
+    population?: number; // million
 
     // External Sector
-    currentAccountToGdp: number; // % GDP
-    tradeBalanceVal: number; // USD bn [NEW]
-    fdi: number; // % GDP
-    externalDebt: number; // % GDP
-    fxReservesBillions: number;
-    netIip: number; // % GDP [NEW]
-    importCoverage: number; // months
-    araMetric: number; // % [NEW]
-    netFuelExports: number; // % GDP [NEW]
-    breakevenOilCa: number; // $/b [NEW]
+    currentAccountToGdp?: number; // % GDP
+    tradeBalanceVal?: number; // USD bn [NEW]
+    fdi?: number; // % GDP
+    externalDebt?: number; // % GDP
+    fxReservesBillions?: number;
+    netIip?: number; // % GDP [NEW]
+    importCoverage?: number; // months
+    araMetric?: number; // % [NEW]
+    netFuelExports?: number; // % GDP [NEW]
+    breakevenOilCa?: number; // $/b [NEW]
 
     // Public Sector
-    fiscalBalance: number; // % GDP
-    primaryBalance: number; // % GDP [NEW]
-    govDebtToGdp: number; // % GDP
-    oilGasRevenue: number; // % gov rev [NEW]
-    energySubsidies: number; // % GDP [NEW]
-    breakevenOilFiscal: number; // $/b [NEW]
+    fiscalBalance?: number; // % GDP
+    primaryBalance?: number; // % GDP [NEW]
+    govDebtToGdp?: number; // % GDP
+    oilGasRevenue?: number; // % gov rev [NEW]
+    energySubsidies?: number; // % GDP [NEW]
+    breakevenOilFiscal?: number; // $/b [NEW]
 
     // Prices & Monetary
-    cpiYoY: number; // %
-    energyInCpi: number; // % [NEW]
-    policyRate: number; // %
-    realInterestRate: number; // %
-    exchangeRate: number; // LCU per USD
+    cpiYoY?: number; // %
+    energyInCpi?: number; // % [NEW]
+    policyRate?: number; // %
+    realInterestRate?: number; // %
+    exchangeRate?: number; // LCU per USD
 
     // Banking & Risk
-    bankCapitalToAssets: number; // % [NEW]
-    loansToDeposits: number; // % [NEW]
-    creditGrowth: number; // % since 2019 [NEW]
-    creditRating: string; // S&P/Moody's proxy
-    ratingOutlook: 'Positive' | 'Stable' | 'Negative'; // [NEW]
+    bankCapitalToAssets?: number; // % [NEW]
+    loansToDeposits?: number; // % [NEW]
+    creditGrowth?: number; // % since 2019 [NEW]
+    creditRating?: string; // S&P/Moody's proxy
+    ratingOutlook?: 'Positive' | 'Stable' | 'Negative'; // [NEW]
 }
 
 export interface NewsEvent {

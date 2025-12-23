@@ -6,7 +6,6 @@ import { AlertTriangle, TrendingUp, Anchor } from 'lucide-react';
 export const LatestIntelligence = () => {
     const [news, setNews] = useState<NewsEvent[]>([]);
     const [filterRegion, setFilterRegion] = useState('ALL');
-    const [selectedCountries, setSelectedCountries] = useState<string[]>([]); // Multi-select
     const [showAISummary, setShowAISummary] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -33,8 +32,7 @@ export const LatestIntelligence = () => {
     };
 
     const filteredNews = news.filter(item => {
-        if (filterRegion !== 'ALL' && item.tags && !item.tags.includes(filterRegion)) return false; // Assuming Region is a tag for now, or we map Country->Region
-        if (selectedCountries.length > 0 && !selectedCountries.includes(item.countryId)) return false;
+        if (filterRegion !== 'ALL' && item.tags && !item.tags.includes(filterRegion)) return false;
         return true;
     });
 

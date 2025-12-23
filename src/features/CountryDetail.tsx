@@ -147,7 +147,7 @@ export const CountryDetail = ({ country, onClose }: CountryDetailProps) => {
                     </select>
                 </div>
                 <MacroChart
-                    data={filteredHistory}
+                    data={chartData}
                     dataKey={selectedMetric}
                     title={selectedMetric === 'gdpGrowth' ? 'GDP Growth %' : selectedMetric}
                 />
@@ -258,61 +258,60 @@ export const CountryDetail = ({ country, onClose }: CountryDetailProps) => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tbody>
-                            {tableData.map((row, i) => (
-                                <tr key={i} style={{ borderBottom: '1px solid var(--bg-tertiary)' }}>
-                                    <td style={{ padding: '8px', textAlign: 'left', position: 'sticky', left: 0, background: 'var(--bg-secondary)', borderRight: '1px solid var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
-                                        {viewMode === 'Annual'
-                                            ? new Date(row.date).getFullYear()
-                                            : new Date(row.date).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })}
-                                    </td>
+                        {tableData.map((row, i) => (
+                            <tr key={i} style={{ borderBottom: '1px solid var(--bg-tertiary)' }}>
+                                <td style={{ padding: '8px', textAlign: 'left', position: 'sticky', left: 0, background: 'var(--bg-secondary)', borderRight: '1px solid var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
+                                    {viewMode === 'Annual'
+                                        ? new Date(row.date).getFullYear()
+                                        : new Date(row.date).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })}
+                                </td>
 
-                                    {/* Activity */}
-                                    <HeatmapCell value={row.gdpGrowth} col="gdpGrowth" data={tableData} suffix="%" />
-                                    <HeatmapCell value={row.nominalGdp} col="nominalGdp" data={tableData} format="0" />
-                                    <HeatmapCell value={row.gdpPerCapita ? row.gdpPerCapita / 1000 : undefined} col="gdpPerCapita" data={tableData} suffix="k" format="1" />
-                                    <HeatmapCell value={row.domesticDemandContribution} col="domesticDemandContribution" data={tableData} />
-                                    <HeatmapCell value={row.privateConsumption} col="privateConsumption" data={tableData} suffix="%" />
-                                    <HeatmapCell value={row.fixedInvestment} col="fixedInvestment" data={tableData} suffix="%" />
-                                    <HeatmapCell value={row.netExportsContribution} col="netExportsContribution" data={tableData} />
-                                    <HeatmapCell value={row.population} col="population" data={tableData} />
+                                {/* Activity */}
+                                <HeatmapCell value={row.gdpGrowth} col="gdpGrowth" data={tableData} suffix="%" />
+                                <HeatmapCell value={row.nominalGdp} col="nominalGdp" data={tableData} format="0" />
+                                <HeatmapCell value={row.gdpPerCapita ? row.gdpPerCapita / 1000 : undefined} col="gdpPerCapita" data={tableData} suffix="k" format="1" />
+                                <HeatmapCell value={row.domesticDemandContribution} col="domesticDemandContribution" data={tableData} />
+                                <HeatmapCell value={row.privateConsumption} col="privateConsumption" data={tableData} suffix="%" />
+                                <HeatmapCell value={row.fixedInvestment} col="fixedInvestment" data={tableData} suffix="%" />
+                                <HeatmapCell value={row.netExportsContribution} col="netExportsContribution" data={tableData} />
+                                <HeatmapCell value={row.population} col="population" data={tableData} />
 
-                                    {/* External */}
-                                    <HeatmapCell value={row.currentAccountToGdp} col="currentAccountToGdp" data={tableData} suffix="%" />
-                                    <HeatmapCell value={row.tradeBalanceVal} col="tradeBalanceVal" data={tableData} />
-                                    <HeatmapCell value={row.fdi} col="fdi" data={tableData} suffix="%" />
-                                    <HeatmapCell value={row.externalDebt} col="externalDebt" data={tableData} suffix="%" />
-                                    <HeatmapCell value={row.fxReservesBillions} col="fxReservesBillions" data={tableData} format="0" />
-                                    <HeatmapCell value={row.netIip} col="netIip" data={tableData} suffix="%" format="0" />
-                                    <HeatmapCell value={row.importCoverage} col="importCoverage" data={tableData} />
-                                    <HeatmapCell value={row.araMetric} col="araMetric" data={tableData} suffix="%" format="0" />
-                                    <HeatmapCell value={row.netFuelExports} col="netFuelExports" data={tableData} suffix="%" />
-                                    <HeatmapCell value={row.breakevenOilCa} col="breakevenOilCa" data={tableData} format="0" />
+                                {/* External */}
+                                <HeatmapCell value={row.currentAccountToGdp} col="currentAccountToGdp" data={tableData} suffix="%" />
+                                <HeatmapCell value={row.tradeBalanceVal} col="tradeBalanceVal" data={tableData} />
+                                <HeatmapCell value={row.fdi} col="fdi" data={tableData} suffix="%" />
+                                <HeatmapCell value={row.externalDebt} col="externalDebt" data={tableData} suffix="%" />
+                                <HeatmapCell value={row.fxReservesBillions} col="fxReservesBillions" data={tableData} format="0" />
+                                <HeatmapCell value={row.netIip} col="netIip" data={tableData} suffix="%" format="0" />
+                                <HeatmapCell value={row.importCoverage} col="importCoverage" data={tableData} />
+                                <HeatmapCell value={row.araMetric} col="araMetric" data={tableData} suffix="%" format="0" />
+                                <HeatmapCell value={row.netFuelExports} col="netFuelExports" data={tableData} suffix="%" />
+                                <HeatmapCell value={row.breakevenOilCa} col="breakevenOilCa" data={tableData} format="0" />
 
-                                    {/* Fiscal */}
-                                    <HeatmapCell value={row.fiscalBalance} col="fiscalBalance" data={tableData} suffix="%" />
-                                    <HeatmapCell value={row.primaryBalance} col="primaryBalance" data={tableData} suffix="%" />
-                                    <HeatmapCell value={row.govDebtToGdp} col="govDebtToGdp" data={tableData} suffix="%" format="0" />
-                                    <HeatmapCell value={row.oilGasRevenue} col="oilGasRevenue" data={tableData} suffix="%" />
-                                    <HeatmapCell value={row.energySubsidies} col="energySubsidies" data={tableData} suffix="%" />
-                                    <HeatmapCell value={row.breakevenOilFiscal} col="breakevenOilFiscal" data={tableData} format="0" />
+                                {/* Fiscal */}
+                                <HeatmapCell value={row.fiscalBalance} col="fiscalBalance" data={tableData} suffix="%" />
+                                <HeatmapCell value={row.primaryBalance} col="primaryBalance" data={tableData} suffix="%" />
+                                <HeatmapCell value={row.govDebtToGdp} col="govDebtToGdp" data={tableData} suffix="%" format="0" />
+                                <HeatmapCell value={row.oilGasRevenue} col="oilGasRevenue" data={tableData} suffix="%" />
+                                <HeatmapCell value={row.energySubsidies} col="energySubsidies" data={tableData} suffix="%" />
+                                <HeatmapCell value={row.breakevenOilFiscal} col="breakevenOilFiscal" data={tableData} format="0" />
 
-                                    {/* Monetary */}
-                                    <HeatmapCell value={row.cpiYoY} col="cpiYoY" data={tableData} suffix="%" />
-                                    <HeatmapCell value={row.energyInCpi} col="energyInCpi" data={tableData} suffix="%" format="0" />
-                                    <HeatmapCell value={row.exchangeRate} col="exchangeRate" data={tableData} />
-                                    <HeatmapCell value={row.policyRate} col="policyRate" data={tableData} suffix="%" />
-                                    <HeatmapCell value={row.realInterestRate} col="realInterestRate" data={tableData} suffix="%" />
+                                {/* Monetary */}
+                                <HeatmapCell value={row.cpiYoY} col="cpiYoY" data={tableData} suffix="%" />
+                                <HeatmapCell value={row.energyInCpi} col="energyInCpi" data={tableData} suffix="%" format="0" />
+                                <HeatmapCell value={row.exchangeRate} col="exchangeRate" data={tableData} />
+                                <HeatmapCell value={row.policyRate} col="policyRate" data={tableData} suffix="%" />
+                                <HeatmapCell value={row.realInterestRate} col="realInterestRate" data={tableData} suffix="%" />
 
-                                    {/* Banking - some text, some number */}
-                                    <HeatmapCell value={row.bankCapitalToAssets} col="bankCapitalToAssets" data={tableData} suffix="%" />
-                                    <HeatmapCell value={row.loansToDeposits} col="loansToDeposits" data={tableData} suffix="%" format="0" />
-                                    <HeatmapCell value={row.creditGrowth} col="creditGrowth" data={tableData} suffix="%" />
-                                    <td style={{ padding: '8px', textAlign: 'right' }}>{row.creditRating}</td>
-                                    <td style={{ padding: '8px', textAlign: 'right' }}>{row.ratingOutlook}</td>
-                                </tr>
-                            ))}
-                        </tbody>
+                                {/* Banking - some text, some number */}
+                                <HeatmapCell value={row.bankCapitalToAssets} col="bankCapitalToAssets" data={tableData} suffix="%" />
+                                <HeatmapCell value={row.loansToDeposits} col="loansToDeposits" data={tableData} suffix="%" format="0" />
+                                <HeatmapCell value={row.creditGrowth} col="creditGrowth" data={tableData} suffix="%" />
+                                <td style={{ padding: '8px', textAlign: 'right' }}>{row.creditRating}</td>
+                                <td style={{ padding: '8px', textAlign: 'right' }}>{row.ratingOutlook}</td>
+                            </tr>
+                        ))}
+                    </tbody>
                 </table>
             </div>
         </div>

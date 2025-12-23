@@ -72,8 +72,8 @@ export const WorldBankService = {
                 .sort((a, b) => parseInt(b) - parseInt(a))
                 .map(year => {
                     const d = dataMap[year];
-                    // Helper to get value or default
-                    const val = (k: keyof typeof INDICATORS) => d[k] ?? null;
+                    // Helper to get value from the data map for this year
+                    const getValue = (indicatorCode: string) => d[indicatorCode] ?? undefined;
 
                     return {
                         countryId,

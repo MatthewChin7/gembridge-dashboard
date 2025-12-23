@@ -82,11 +82,11 @@ export const CrisisMonitor = () => {
                             <div style={{ display: 'flex', gap: '12px', fontSize: '12px' }}>
                                 <div style={{ flex: 1 }}>
                                     <div className="text-muted">Gov. Debt/GDP</div>
-                                    <div className="text-xl" style={{ fontWeight: 700 }}>{c.data.govDebtToGdp.toFixed(0)}%</div>
+                                    <div className="text-xl" style={{ fontWeight: 700 }}>{(c.data.govDebtToGdp ?? 0).toFixed(0)}%</div>
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <div className="text-muted">Reserves</div>
-                                    <div style={{ fontWeight: 600 }}>${c.data.fxReservesBillions.toFixed(0)}B</div>
+                                    <div style={{ fontWeight: 600 }}>${(c.data.fxReservesBillions ?? 0).toFixed(0)}B</div>
                                 </div>
                             </div>
 
