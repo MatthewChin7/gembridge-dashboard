@@ -79,6 +79,7 @@ export interface NewsEvent {
     sentimentScore: number; // -1.0 to 1.0
     tags: string[];
     impactLevel: 'HIGH' | 'MEDIUM' | 'LOW';
+    url?: string; // Optional URL to source article
 }
 
 export interface TradeSignal {

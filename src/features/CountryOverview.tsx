@@ -111,7 +111,10 @@ export const CountryOverview = ({ desk }: CountryOverviewProps) => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', position: 'sticky', top: '24px', height: 'calc(100vh - 48px)' }}>
-                <LatestIntelligence />
+                <LatestIntelligence
+                    selectedCountries={getSortedAndFilteredCountries().map(c => c.id)}
+                    regionFilter={filterRegion}
+                />
             </div>
 
             {selectedCountry && (

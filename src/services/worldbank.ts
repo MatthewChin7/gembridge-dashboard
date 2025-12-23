@@ -1,7 +1,6 @@
 import { MacroIndicator } from '../types';
 
-const BASE_URL = 'https://api.worldbank.org/v2/country';
-const FORMAT = 'format=json';
+// World Bank API Service for fetching live macro-economic data
 
 // Comprehensive Indicator Codes
 const INDICATORS = {
@@ -133,23 +132,31 @@ export const WorldBankService = {
         }
     },
 
-    async fetchIndicatorSeries(countryCode: string, indicator: string, dateRange: string): Promise<{ date: string, value: number }[]> {
-        try {
-            const url = `${BASE_URL}/${countryCode}/indicator/${indicator}?${FORMAT}&per_page=100&date=${dateRange}`;
-            const response = await fetch(url);
-            const data = await response.json();
+    async fetchIndicatorSeries(countryId: string, indicatorCode: string, dateRange: string): Promise<{ date: string; value: number }[]> {
+        const url = `https://api.worldbank.org/v2/country/${countryId}/indicator/${indicatorCode}?date=${dateRange}&format=json&per_page=100`;
 
-            if (data && data[1]) {
-                return data[1]
-                    .filter((d: any) => d.value !== null)
-                    .map((d: any) => ({
-                        date: d.date,
-                        value: d.value
-                    }));
-            }
-            return [];
-        } catch (e) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) return [];
+
+            const json = await response.json();
+
+            // World Bank API returns [metadata, data_array]
+            // We need the second element (index 1)
+            if (!Array.isArray(json) || json.length < 2) return [];
+
+            const dataPoints = json[1];
+            if (!Array.isArray(dataPoints)) return [];
+
+            return dataPoints
+                .filter(point => point.value !== null && point.value !== undefined)
+                .map(point => ({
+                    date: point.date, // Year as string, e.g., "2024"
+                    value: typeof point.value === 'number' ? point.value : parseFloat(point.value)
+                }));
+        } catch (error) {
+            console.warn(`Failed to fetch ${indicatorCode} for ${countryId}:`, error);
             return [];
         }
-    }
+    },
 };

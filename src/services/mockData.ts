@@ -81,6 +81,7 @@ export const NEWS_FEED: NewsEvent[] = [
         sentimentScore: -0.8,
         tags: ['MONETARY_POLICY', 'FX'],
         impactLevel: 'HIGH',
+        url: 'https://www.reuters.com/markets/currencies/turkey-central-bank-policy',
     },
     {
         id: '2',
@@ -92,18 +93,20 @@ export const NEWS_FEED: NewsEvent[] = [
         sentimentScore: -0.4,
         tags: ['FISCAL', 'POLITICS'],
         impactLevel: 'MEDIUM',
+        url: 'https://www.bloomberg.com/news/articles/brazil-fiscal-framework',
     },
     {
         id: '3',
         countryId: 'IND',
         timestamp: subDays(new Date(), 0).toISOString(),
         headline: 'Tech Exports Surge to Record Highs',
-        summary: 'Service sector exports beat expectations, supporting the Rupee.',
-        source: 'LOCAL',
-        sentimentScore: 0.7,
-        tags: ['GROWTH', 'TRADE'],
+        summary: 'India\'s IT services exports reached $200B annually, driven by AI and cloud demand.',
+        source: 'REUTERS',
+        sentimentScore: 0.9,
+        tags: ['TRADE', 'TECH'],
         impactLevel: 'MEDIUM',
-    }
+        url: 'https://www.reuters.com/technology/india-tech-exports-record',
+    },
 ];
 
 export const SIGNALS: TradeSignal[] = [

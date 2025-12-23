@@ -3,9 +3,13 @@ import { NewsEvent } from '../../types';
 import { NewsService } from '../../services/api';
 import { AlertTriangle, TrendingUp, Anchor } from 'lucide-react';
 
-export const LatestIntelligence = () => {
+interface LatestIntelligenceProps {
+    selectedCountries?: string[]; // Country IDs from the watchlist
+    regionFilter?: string; // Region filter from the watchlist
+}
+
+export const LatestIntelligence = ({ selectedCountries = [], regionFilter = 'ALL' }: LatestIntelligenceProps) => {
     const [news, setNews] = useState<NewsEvent[]>([]);
-    const [filterRegion, setFilterRegion] = useState('ALL');
     const [showAISummary, setShowAISummary] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -31,8 +35,16 @@ export const LatestIntelligence = () => {
         return <TrendingUp size={14} className="text-green" />;
     };
 
+    // Filter news based on selected countries from watchlist and region prop
     const filteredNews = news.filter(item => {
-        if (filterRegion !== 'ALL' && item.tags && !item.tags.includes(filterRegion)) return false;
+        // If specific countries are selected, only show news for those countries
+        if (selectedCountries.length > 0 && !selectedCountries.includes(item.countryId)) {
+            return false;
+        }
+        // Filter by region prop
+        if (regionFilter !== 'ALL' && item.tags && !item.tags.includes(regionFilter)) {
+            return false;
+        }
         return true;
     });
 
@@ -49,30 +61,20 @@ export const LatestIntelligence = () => {
                         >
                             {isRefreshing ? 'UPDATING...' : 'REAL-TIME'}
                         </button>
+                        <button
+                            className="btn"
+                            onClick={() => setShowAISummary(!showAISummary)}
+                            style={{ fontSize: '10px', padding: '2px 6px', background: showAISummary ? 'var(--accent-purple)' : 'var(--bg-tertiary)' }}
+                        >
+                            {showAISummary ? 'Hide AI' : 'AI Brief'}
+                        </button>
                     </div>
                 </div>
-
-                {/* Filters */}
-                <div style={{ display: 'flex', gap: '4px', width: '100%' }}>
-                    <select
-                        className="input"
-                        style={{ fontSize: '11px', padding: '2px' }}
-                        value={filterRegion}
-                        onChange={(e) => setFilterRegion(e.target.value)}
-                    >
-                        <option value="ALL">All Regions</option>
-                        <option value="LATAM">LATAM</option>
-                        <option value="EMEA">EMEA</option>
-                        <option value="ASIA">ASIA</option>
-                    </select>
-                    <button
-                        className="btn"
-                        onClick={() => setShowAISummary(!showAISummary)}
-                        style={{ fontSize: '11px', flex: 1, background: showAISummary ? 'var(--accent-purple)' : 'var(--bg-tertiary)' }}
-                    >
-                        {showAISummary ? 'Hide AI Brief' : 'Gen AI Brief'}
-                    </button>
-                </div>
+                {selectedCountries.length > 0 && (
+                    <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                        Showing news for {selectedCountries.length} selected {selectedCountries.length === 1 ? 'country' : 'countries'}
+                    </div>
+                )}
             </div>
 
             {/* AI Summary Section */}
@@ -81,15 +83,34 @@ export const LatestIntelligence = () => {
                     padding: '12px', background: 'rgba(139, 92, 246, 0.1)', borderBottom: '1px solid var(--accent-purple)',
                     fontSize: '12px', marginBottom: '12px'
                 }}>
-                    <div style={{ fontWeight: '600', color: 'var(--accent-purple)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ fontWeight: '600', color: 'var(--accent-purple)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         ✨ AI Executive Summary
                     </div>
-                    <p style={{ lineHeight: '1.4' }}>
-                        Key developments in <strong>{filterRegion === 'ALL' ? 'Global EM' : filterRegion}</strong> markets:
-                        Political noise in LATAM remains elevated with Brazil fiscal concerns.
-                        In EMEA, Turkey's pivot to orthodoxy is showing mixed results.
-                        Asia remains resilient despite China slowdown.
-                    </p>
+                    <div style={{ lineHeight: '1.6', color: 'var(--text-primary)' }}>
+                        <strong>Key Developments in {regionFilter === 'ALL' ? 'Selected Markets' : regionFilter}:</strong>
+                        <ul style={{ marginTop: '8px', marginBottom: 0, paddingLeft: '20px' }}>
+                            {filteredNews.slice(0, 5).map(item => (
+                                <li key={item.id} style={{ marginBottom: '6px' }}>
+                                    <strong>{item.countryId}:</strong> {item.summary.slice(0, 80)}...
+                                    {item.url && (
+                                        <a
+                                            href={item.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{ marginLeft: '4px', color: 'var(--accent-blue)', textDecoration: 'none' }}
+                                        >
+                                            [Source]
+                                        </a>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                        {filteredNews.length === 0 && (
+                            <p style={{ marginTop: '8px', color: 'var(--text-secondary)' }}>
+                                No recent developments for selected filters.
+                            </p>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -111,9 +132,30 @@ export const LatestIntelligence = () => {
                             </span>
                             {getIcon(item.tags)}
                         </div>
-                        <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '2px' }}>
-                            {item.headline}
-                        </div>
+                        {item.url ? (
+                            <a
+                                href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                    fontSize: '13px',
+                                    fontWeight: 500,
+                                    marginBottom: '2px',
+                                    color: 'var(--text-primary)',
+                                    textDecoration: 'none',
+                                    display: 'block',
+                                    transition: 'color 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-blue)'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                            >
+                                {item.headline} →
+                            </a>
+                        ) : (
+                            <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '2px' }}>
+                                {item.headline}
+                            </div>
+                        )}
                         <div className="text-muted" style={{ fontSize: '12px', lineHeight: '1.4' }}>
                             {item.summary}
                         </div>
