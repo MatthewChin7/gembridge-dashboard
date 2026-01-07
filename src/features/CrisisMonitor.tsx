@@ -10,13 +10,16 @@ export const CrisisMonitor = () => {
         const fetchRisk = async () => {
             const allCountries = await MacroService.getCountries();
             const riskies = await Promise.all(allCountries
-                .filter(c => c.riskScore > 50)
                 .map(async c => ({
                     ...c,
                     data: (await MacroService.getLatestIndicators(c.id))!
                 }))
             );
-            setHighRiskCountries(riskies.sort((a, b) => b.riskScore - a.riskScore));
+            // Sort by Gov Debt to GDP desc
+            setHighRiskCountries(riskies
+                .filter(c => (c.data?.govDebtToGdp || 0) > 50)
+                .sort((a, b) => (b.data?.govDebtToGdp || 0) - (a.data?.govDebtToGdp || 0))
+            );
         };
         fetchRisk();
     }, []);
@@ -71,18 +74,18 @@ export const CrisisMonitor = () => {
                 <h2 className="text-xl" style={{ marginBottom: '16px' }}>Early Warning Signals</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {highRiskCountries.map(c => (
-                        <div key={c.id} className="panel" style={{ borderLeft: c.riskScore > 80 ? '4px solid var(--status-critical)' : '4px solid var(--status-warning)' }}>
+                        <div key={c.id} className="panel" style={{ borderLeft: (c.data.govDebtToGdp || 0) > 70 ? '4px solid var(--status-critical)' : '4px solid var(--status-warning)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                 <span style={{ fontWeight: 700 }}>{c.name}</span>
-                                <span style={{ color: c.riskScore > 80 ? 'var(--status-critical)' : 'var(--status-warning)' }}>
-                                    {c.riskScore}/100 Risk
+                                <span style={{ color: (c.data.govDebtToGdp || 0) > 70 ? 'var(--status-critical)' : 'var(--status-warning)' }}>
+                                    {(c.data.govDebtToGdp || 0).toFixed(0)}% Debt/GDP
                                 </span>
                             </div>
 
                             <div style={{ display: 'flex', gap: '12px', fontSize: '12px' }}>
                                 <div style={{ flex: 1 }}>
-                                    <div className="text-muted">Gov. Debt/GDP</div>
-                                    <div className="text-xl" style={{ fontWeight: 700 }}>{(c.data.govDebtToGdp ?? 0).toFixed(0)}%</div>
+                                    <div className="text-muted">Fiscal Bal.</div>
+                                    <div className="text-xl" style={{ fontWeight: 700 }}>{(c.data.fiscalBalance ?? 0).toFixed(1)}%</div>
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <div className="text-muted">Reserves</div>
@@ -92,7 +95,7 @@ export const CrisisMonitor = () => {
 
                             <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--bg-tertiary)', fontSize: '11px', display: 'flex', gap: '4px' }}>
                                 <ShieldAlert size={12} />
-                                <span>High probability of capital controls if USD/{c.currency} exceeds threshold.</span>
+                                <span>High leverage alert. Monitor fiscal consolidation path.</span>
                             </div>
                         </div>
                     ))}

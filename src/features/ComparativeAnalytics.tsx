@@ -6,7 +6,7 @@ import { Heatmap } from '../components/Analytics/Heatmap';
 
 export const ComparativeAnalytics = () => {
     const [data, setData] = useState<{ country: Country; data: MacroIndicator }[]>([]);
-    const [sortConfig, setSortConfig] = useState<{ key: keyof MacroIndicator | 'riskScore'; direction: 'asc' | 'desc' } | null>(null);
+    const [sortConfig, setSortConfig] = useState<{ key: keyof MacroIndicator; direction: 'asc' | 'desc' } | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -20,7 +20,7 @@ export const ComparativeAnalytics = () => {
         fetchData();
     }, []);
 
-    const handleSort = (key: keyof MacroIndicator | 'riskScore') => {
+    const handleSort = (key: keyof MacroIndicator) => {
         let direction: 'asc' | 'desc' = 'asc';
         if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
             direction = 'desc';
@@ -35,10 +35,7 @@ export const ComparativeAnalytics = () => {
         let valA: number = 0;
         let valB: number = 0;
 
-        if (key === 'riskScore') {
-            valA = a.country.riskScore;
-            valB = b.country.riskScore;
-        } else {
+        if (key) {
             // Handle potentially undefined macro fields safely
             valA = (a.data[key] as number) || 0;
             valB = (b.data[key] as number) || 0;

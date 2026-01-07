@@ -3,7 +3,7 @@ import { Country, MacroIndicator } from '../../types';
 interface DataGridProps {
     rows: { country: Country; data: MacroIndicator }[];
     sortedData: { country: Country; data: MacroIndicator }[]; // Passed from parent
-    handleSort: (key: keyof MacroIndicator | 'riskScore') => void;
+    handleSort: (key: keyof MacroIndicator) => void;
 }
 
 export const DataGrid = ({ sortedData, handleSort }: DataGridProps) => {

@@ -1,10 +1,18 @@
 import { Country, MacroIndicator, NewsEvent, TradeSignal } from '../types';
-import { COUNTRIES, MACRO_DATA, NEWS_FEED, SIGNALS } from './mockData';
+import { COUNTRIES, NEWS_FEED, SIGNALS } from './mockData';
 import { WorldBankService } from './worldbank';
 
+import { IMFService as RealIMFService } from './imf_live';
+
 export const MacroService = {
-    getCountries: (): Promise<Country[]> => {
-        return Promise.resolve(COUNTRIES);
+    getCountries: async (): Promise<Country[]> => {
+        try {
+            const live = await WorldBankService.getCountries();
+            if (live.length > 0) return live;
+            return COUNTRIES;
+        } catch (e) {
+            return COUNTRIES;
+        }
     },
 
     getCountry: (id: string): Promise<Country | undefined> => {
@@ -12,72 +20,128 @@ export const MacroService = {
     },
 
     getMacroData: async (countryId: string): Promise<MacroIndicator[]> => {
-        const liveData = await WorldBankService.getHistoricalMacroData(countryId, 10);
-        if (liveData.length > 0) {
-            return liveData;
+        try {
+            const [history, forecasts] = await Promise.all([
+                WorldBankService.getHistoricalMacroData(countryId, 10),
+                RealIMFService.getForecasts(countryId)
+            ]);
+
+            // Combine and sort (Newest first) with deduplication by year
+            const dataMap = new Map<string, MacroIndicator>();
+
+            // 1. Add Historical Data (World Bank) - Treat as source of truth for past
+            history.forEach(d => {
+                const year = d.date.substring(0, 4);
+                dataMap.set(year, d);
+            });
+
+            // 2. Add Forecasts (IMF) - Merge with existing data or add new
+            forecasts.forEach(d => {
+                const year = d.date.substring(0, 4);
+                if (dataMap.has(year)) {
+                    // Merge logic: Fill in missing gaps, AND overwrite with IMF if it's a projection year
+                    // This fixes the issue where stale/partial WB data (e.g. old estimates) overrides fresh IMF WEO forecasts
+                    const existing = dataMap.get(year)!;
+                    dataMap.set(year, {
+                        ...existing,
+                        // Prioritize IMF for key macro metrics if they exist
+                        gdpGrowth: d.gdpGrowth ?? existing.gdpGrowth,
+                        cpiYoY: d.cpiYoY ?? existing.cpiYoY,
+                        govDebtToGdp: d.govDebtToGdp ?? existing.govDebtToGdp,
+                        currentAccountToGdp: d.currentAccountToGdp ?? existing.currentAccountToGdp,
+                        source: existing.source + ' + IMF Forecast'
+                    });
+                } else {
+                    dataMap.set(year, d);
+                }
+            });
+
+            const combined = Array.from(dataMap.values()).sort((a, b) =>
+                new Date(b.date).getTime() - new Date(a.date).getTime()
+            );
+
+            return combined;
+        } catch (e) {
+            console.warn(`Error fetching macro data for ${countryId}`, e);
+            return [];
         }
-        // Fallback to mock only if API completely fails (to prevent empty screen) or return empty
-        console.warn(`Falling back to mock data for ${countryId} history`);
-        return MACRO_DATA[countryId] || [];
     },
 
     getLatestIndicators: async (countryId: string): Promise<MacroIndicator | undefined> => {
-        const baseData = MACRO_DATA[countryId] && MACRO_DATA[countryId].length > 0 ? MACRO_DATA[countryId][0] : undefined;
-        if (!baseData) return undefined;
-
+        // Strict Live Mode: No mock fallback
         try {
-            // Fetch live data from World Bank to overlay on mock data
-            // In a real app, this would be the primary source
-            const wbData = await WorldBankService.getLatestMacroData(countryId);
+            // Parallel fetch: World Bank (Historical/Lagged) + IMF (Forecasts)
+            const [wbData, imfData] = await Promise.all([
+                WorldBankService.getLatestMacroData(countryId).catch(() => ({})),
+                RealIMFService.getLatestForecasts(countryId).catch(() => ({} as any))
+            ]);
+
+            const liveData = { ...wbData, ...imfData };
+            const hasData = Object.keys(liveData).length > 0;
+
+            if (!hasData) {
+                return {
+                    countryId,
+                    date: new Date().toISOString(),
+                    isMock: false,
+                    source: 'No Live Data'
+                };
+            }
+
             return {
-                ...baseData,
+                countryId,
+                date: liveData.date || new Date().toISOString(),
+
                 // Activity
-                gdpGrowth: wbData.gdpGrowth ?? baseData.gdpGrowth,
-                nominalGdp: wbData.nominalGdp ?? baseData.nominalGdp,
-                gdpPerCapita: wbData.gdpPerCapita ?? baseData.gdpPerCapita,
-                domesticDemandContribution: baseData.domesticDemandContribution,
-                privateConsumption: wbData.privateConsumption ?? baseData.privateConsumption,
-                fixedInvestment: wbData.fixedInvestment ?? baseData.fixedInvestment,
-                netExportsContribution: baseData.netExportsContribution,
-                population: wbData.population ?? baseData.population,
+                gdpGrowth: liveData.gdpGrowth,
+                nominalGdp: liveData.nominalGdp,
+                gdpPerCapita: liveData.gdpPerCapita,
+                domesticDemandContribution: undefined,
+                privateConsumption: liveData.privateConsumption,
+                fixedInvestment: liveData.fixedInvestment,
+                netExportsContribution: undefined,
+                population: liveData.population,
 
                 // Prices
-                cpiYoY: wbData.cpiYoY ?? baseData.cpiYoY,
-                energyInCpi: baseData.energyInCpi,
-                policyRate: baseData.policyRate,
-                realInterestRate: wbData.realInterestRate ?? baseData.realInterestRate,
-                exchangeRate: wbData.exchangeRate ?? baseData.exchangeRate,
+                cpiYoY: liveData.cpiYoY,
+                energyInCpi: undefined,
+                policyRate: liveData.policyRate,
+                realInterestRate: liveData.realInterestRate,
+                exchangeRate: liveData.exchangeRate,
 
                 // External
-                currentAccountToGdp: wbData.currentAccountToGdp ?? baseData.currentAccountToGdp,
-                tradeBalanceVal: baseData.tradeBalanceVal,
-                fdi: wbData.fdi ?? baseData.fdi,
-                externalDebt: wbData.externalDebt ?? baseData.externalDebt,
-                fxReservesBillions: wbData.fxReservesBillions ?? baseData.fxReservesBillions,
-                netIip: baseData.netIip,
-                importCoverage: wbData.importCoverage ?? baseData.importCoverage,
-                araMetric: baseData.araMetric,
-                netFuelExports: baseData.netFuelExports,
-                breakevenOilCa: baseData.breakevenOilCa,
+                currentAccountToGdp: liveData.currentAccountToGdp,
+                tradeBalanceVal: liveData.tradeBalanceVal,
+                fdi: liveData.fdi,
+                externalDebt: liveData.externalDebt,
+                fxReservesBillions: liveData.fxReservesBillions,
+                netIip: undefined,
+                importCoverage: liveData.importCoverage,
+                araMetric: undefined,
+                netFuelExports: undefined,
+                breakevenOilCa: undefined,
 
                 // Fiscal
-                fiscalBalance: wbData.fiscalBalance ?? baseData.fiscalBalance,
-                primaryBalance: baseData.primaryBalance,
-                govDebtToGdp: wbData.govDebtToGdp ?? baseData.govDebtToGdp,
-                oilGasRevenue: baseData.oilGasRevenue,
-                energySubsidies: baseData.energySubsidies,
-                breakevenOilFiscal: baseData.breakevenOilFiscal,
+                fiscalBalance: liveData.fiscalBalance,
+                primaryBalance: undefined,
+                govDebtToGdp: liveData.govDebtToGdp,
+                oilGasRevenue: undefined,
+                energySubsidies: undefined,
+                breakevenOilFiscal: undefined,
 
                 // Banking
-                bankCapitalToAssets: baseData.bankCapitalToAssets,
-                loansToDeposits: baseData.loansToDeposits,
-                creditGrowth: baseData.creditGrowth,
-                creditRating: baseData.creditRating,
-                ratingOutlook: baseData.ratingOutlook
+                bankCapitalToAssets: liveData.bankCapitalToAssets,
+                loansToDeposits: undefined,
+                creditGrowth: undefined,
+                creditRating: undefined,
+                ratingOutlook: undefined,
+
+                isMock: false,
+                source: (imfData as any).source ? 'IMF WEO / WB' : 'World Bank'
             };
         } catch (e) {
-            console.warn(`WB Fetch failed for ${countryId}, falling back to mock`, e);
-            return baseData;
+            console.warn(`Fetch failed for ${countryId}`, e);
+            return undefined;
         }
     }
 };

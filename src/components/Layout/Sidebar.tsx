@@ -8,26 +8,26 @@ interface SidebarProps {
 export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
     const menuItems = [
         { id: 'OVERVIEW', icon: LayoutDashboard, label: 'Overview' },
-        { id: 'COMPARATIVE', icon: BarChart2, label: 'Comparative' },
-        { id: 'SIGNALS', icon: Zap, label: 'Signals' },
-        { id: 'CALENDAR', icon: Globe, label: 'Calendar' },
-        { id: 'CRISIS', icon: Radio, label: 'Crisis Monitor' },
+        { id: 'COMPARATIVE', icon: BarChart2, label: 'Comparative (BETA)' },
+        { id: 'SIGNALS', icon: Zap, label: 'Signals (BETA)' },
+        { id: 'CALENDAR', icon: Globe, label: 'Calendar (BETA)' },
+        { id: 'CRISIS', icon: Radio, label: 'Crisis Monitor (BETA)' },
     ];
 
     return (
         <aside className="sidebar">
-            <div style={{ padding: '20px', borderBottom: '1px solid var(--bg-tertiary)' }}>
+            <div style={{ padding: '16px', borderBottom: '1px solid var(--bg-tertiary)' }}>
                 <img
                     src="/src/assets/logo.png"
                     alt="Gembridge"
-                    style={{ height: '32px', marginBottom: '8px' }}
+                    style={{ height: '24px', marginBottom: '8px', filter: 'grayscale(100%) contrast(1000%) brightness(100%) sepia(100%) hue-rotate(30deg) saturate(500%)' }} // Attempt to make logo amber-ish
                 />
-                <div className="text-sm text-muted">
-                    MACRO TRADER
+                <div className="text-sm" style={{ color: 'var(--text-primary)', fontWeight: 'bold', letterSpacing: '0.1em' }}>
+                    TERMINAL
                 </div>
             </div>
 
-            <nav style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <nav style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: '1px' }}>
                 {menuItems.map((item) => (
                     <div
                         key={item.id}
@@ -36,26 +36,26 @@ export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '12px',
-                            padding: '10px 12px',
-                            borderRadius: '4px',
+                            padding: '8px 16px',
+                            borderRadius: '0',
                             cursor: 'pointer',
-                            background: activeView === item.id ? 'var(--bg-tertiary)' : 'transparent',
-                            color: activeView === item.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                            transition: 'all 0.2s ease',
-                            borderLeft: activeView === item.id ? '3px solid var(--accent-blue)' : '3px solid transparent'
+                            background: activeView === item.id ? 'var(--text-primary)' : 'transparent',
+                            color: activeView === item.id ? '#000' : 'var(--text-secondary)',
+                            fontWeight: activeView === item.id ? 'bold' : 'normal',
+                            transition: 'none', // Instant transition
                         }}
                     >
-                        <item.icon size={16} />
-                        <span style={{ fontSize: '13px', fontWeight: 500 }}>{item.label}</span>
+                        <item.icon size={14} />
+                        <span style={{ fontSize: '11px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>{item.label}</span>
                     </div>
                 ))}
             </nav>
 
-            <div style={{ marginTop: 'auto', padding: '20px', borderTop: '1px solid var(--bg-tertiary)' }}>
-                <div className="text-sm text-muted">System Status</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--status-safe)' }}></div>
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Connected (14ms)</span>
+            <div style={{ marginTop: 'auto', padding: '16px', borderTop: '1px solid var(--bg-tertiary)' }}>
+                <div className="text-sm text-secondary">SYSTEM</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '0', background: 'var(--status-safe)' }}></div>
+                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>ONLINE</span>
                 </div>
             </div>
         </aside>

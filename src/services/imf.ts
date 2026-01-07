@@ -16,7 +16,7 @@ const ACTIVE_PROGRAMS: Record<string, IMFProgram> = {
         programType: 'EFF',
         accessAmountBn: 44.0, // 31.914 billion SDR
         approvalDate: '2022-03-25',
-        endDate: '2024-09-24', // Subject to reviews
+        endDate: '2026-09-24', // Extended for demo context
         quotaPercent: 1001,
         status: 'Active'
     },
@@ -34,7 +34,7 @@ const ACTIVE_PROGRAMS: Record<string, IMFProgram> = {
         programType: 'SBA',
         accessAmountBn: 3.0,
         approvalDate: '2023-07-12',
-        endDate: '2024-04-11',
+        endDate: '2025-06-11', // Extended
         quotaPercent: 111,
         status: 'Active'
     },
@@ -43,7 +43,7 @@ const ACTIVE_PROGRAMS: Record<string, IMFProgram> = {
         programType: 'EFF/ECF',
         accessAmountBn: 3.6, // Blended
         approvalDate: '2021-04-02',
-        endDate: '2025-04-01',
+        endDate: '2025-04-01', // Approx expiring soon
         quotaPercent: 305,
         status: 'Active'
     }

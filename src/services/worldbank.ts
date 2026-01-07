@@ -1,4 +1,4 @@
-import { MacroIndicator } from '../types';
+import { MacroIndicator, Country } from '../types';
 
 // World Bank API Service for fetching live macro-economic data
 
@@ -13,6 +13,7 @@ const INDICATORS = {
     POPULATION: 'SP.POP.TOTL',
     DOMESTIC_DEMAND: 'NE.DAB.TOTL.ZS', // Proxy or Gross National Expenditure
     NET_EXPORTS: 'NE.EXP.GNFS.ZS', // Exports % GDP - Imports % GDP (Derived)
+    GNI_PCAP: 'NY.GNP.PCAP.CD', // GNI per capita, Atlas method (current US$)
 
     // External
     CURRENT_ACCOUNT: 'BN.CAB.XOKA.GD.ZS',
@@ -26,6 +27,7 @@ const INDICATORS = {
     // Fiscal
     FISCAL_BALANCE: 'GC.BAL.CASH.GD.ZS', // Cash surplus/deficit
     GOV_DEBT: 'GC.DOD.TOTL.GD.ZS', // Central gov debt
+    IMF_CREDIT: 'DT.DOD.DIMF.CD', // Use of IMF credit (DOD, current US$)
 
     // Monetary & Prices
     INFLATION: 'FP.CPI.TOTL.ZG',
@@ -38,10 +40,75 @@ const INDICATORS = {
 };
 
 export const WorldBankService = {
+    async getCountries(): Promise<Country[]> {
+        // Fetch all countries (using a large per_page to get all in one go, max is usually 300)
+        const url = 'https://api.worldbank.org/v2/country?format=json&per_page=300';
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Failed to fetch countries');
+
+            const json = await response.json();
+            // json[1] is the array of countries
+            if (!json || !json[1]) return [];
+
+            const rawCountries = json[1];
+
+            return rawCountries
+                .filter((c: any) => c.region.value !== 'Aggregates') // Filter out "World", "Africa", etc.
+                .map((c: any) => ({
+                    id: c.id, // ISO3 Code e.g. ARG
+                    name: c.name,
+                    region: this.mapRegion(c.region.value),
+                    currency: 'USD', // Helper: WB doesn't return currency in this endpoint easily, defaulting for now
+                }));
+
+        } catch (e) {
+            console.warn('Failed to load WB countries', e);
+            return [];
+        }
+    },
+
+    mapRegion(wbRegion: string): 'LATAM' | 'EMEA' | 'ASIA' | 'G10' {
+        // Simple heuristic mapping
+        if (wbRegion.includes('Latin America')) return 'LATAM';
+        if (wbRegion.includes('Europe') || wbRegion.includes('Middle East') || wbRegion.includes('Africa')) return 'EMEA';
+        if (wbRegion.includes('Asia')) return 'ASIA';
+        if (wbRegion.includes('North America')) return 'G10'; // Approximation
+        return 'G10';
+    },
+
     async getLatestMacroData(countryId: string): Promise<Partial<MacroIndicator>> {
-        // Re-use historical fetcher for simplicity and consistency
-        const history = await this.getHistoricalMacroData(countryId, 1);
-        return history.length > 0 ? history[0] : {};
+        // MRV (Most Recent Value) Logic: World Bank has reporting lag
+        // Fetch last 5 years and pick the most recent non-null value for each indicator
+        const history = await this.getHistoricalMacroData(countryId, 5);
+
+        if (history.length === 0) return {};
+
+        // Iterate through years (newest first) and build composite "latest" object
+        const latest: Partial<MacroIndicator> = {
+            countryId,
+            date: history[0].date // Use the most recent year's date as reference
+        };
+
+        // For each field, find the most recent non-null value
+        const fields: (keyof MacroIndicator)[] = [
+            'gdpGrowth', 'nominalGdp', 'gdpPerCapita', 'gniPerCapita', 'privateConsumption',
+            'fixedInvestment', 'population', 'cpiYoY', 'realInterestRate',
+            'exchangeRate', 'currentAccountToGdp', 'tradeBalanceVal', 'fdi',
+            'externalDebt', 'fxReservesBillions', 'importCoverage',
+            'fiscalBalance', 'govDebtToGdp', 'bankCapitalToAssets'
+        ];
+
+        for (const field of fields) {
+            for (const row of history) {
+                if (row[field] !== undefined && row[field] !== null) {
+                    latest[field] = row[field] as any;
+                    break; // Take the first (most recent) non-null value
+                }
+            }
+        }
+
+        return latest;
     },
 
     async getHistoricalMacroData(countryId: string, years: number = 10): Promise<MacroIndicator[]> {
@@ -60,9 +127,10 @@ export const WorldBankService = {
             // Process results into a year-based map
             results.forEach((series, index) => {
                 const indicatorKey = keys[index];
+                const indicatorCode = INDICATORS[indicatorKey]; // Use the actual WB code as the key
                 series.forEach(point => {
                     if (!dataMap[point.date]) dataMap[point.date] = {};
-                    dataMap[point.date][indicatorKey] = point.value;
+                    dataMap[point.date][indicatorCode] = point.value;
                 });
             });
 
@@ -82,11 +150,10 @@ export const WorldBankService = {
                         gdpGrowth: getValue('NY.GDP.MKTP.KD.ZG'),
                         nominalGdp: getValue('NY.GDP.MKTP.CD') ? getValue('NY.GDP.MKTP.CD')! / 1e9 : undefined, // BN USD
                         gdpPerCapita: getValue('NY.GDP.PCAP.CD'),
-                        domesticDemandContribution: undefined, // WB doesn't provide this directly usually
                         privateConsumption: getValue('NE.CON.PRVT.ZS'),
                         fixedInvestment: getValue('NE.GDI.TOTL.ZS'),
-                        netExportsContribution: undefined,
                         population: getValue('SP.POP.TOTL') ? getValue('SP.POP.TOTL')! / 1e6 : undefined, // Million
+                        gniPerCapita: getValue('NY.GNP.PCAP.CD'),
 
                         // External
                         currentAccountToGdp: getValue('BN.CAB.XOKA.GD.ZS'),
@@ -94,33 +161,21 @@ export const WorldBankService = {
                         fdi: getValue('BX.KLT.DINV.WD.GD.ZS'),
                         externalDebt: getValue('DT.DOD.DECT.GN.ZS'),
                         fxReservesBillions: getValue('FI.RES.TOTL.CD') ? getValue('FI.RES.TOTL.CD')! / 1e9 : undefined, // BN USD
-                        netIip: undefined,
                         importCoverage: getValue('FI.RES.TOTL.MO'),
-                        araMetric: undefined,
-                        netFuelExports: undefined,
-                        breakevenOilCa: undefined,
+                        imfCredit: getValue('DT.DOD.DIMF.CD') ? getValue('DT.DOD.DIMF.CD')! / 1e9 : undefined,
 
                         // Fiscal
                         fiscalBalance: getValue('GC.BAL.CASH.GD.ZS'), // Cash surplus/def
-                        primaryBalance: undefined,
                         govDebtToGdp: getValue('GC.DOD.TOTL.GD.ZS'), // Central gov debt
                         oilGasRevenue: getValue('NY.GDP.PETR.RT.ZS'), // Oil rents % GDP as proxy?
-                        energySubsidies: undefined,
-                        breakevenOilFiscal: undefined,
 
                         // Monetary & Prices
                         cpiYoY: getValue('FP.CPI.TOTL.ZG'),
-                        energyInCpi: undefined,
                         exchangeRate: getValue('PA.NUS.FCRF'),
-                        policyRate: undefined, // WB doesn't have pol rates usually
                         realInterestRate: getValue('FR.INR.RINR'),
 
                         // Banking
                         bankCapitalToAssets: getValue('FB.BNK.CAPA.ZS'),
-                        loansToDeposits: undefined,
-                        creditGrowth: undefined,
-                        creditRating: undefined, // Qualitative
-                        ratingOutlook: undefined,
                     } as MacroIndicator;
                 });
 

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { MacroService } from '../services/api';
 import { Country, MacroIndicator } from '../types';
+import { Search } from 'lucide-react';
 import { MacroSnapshot } from '../components/Dashboard/MacroSnapshot';
-import { LatestIntelligence } from '../components/Dashboard/LatestIntelligence';
+
 import { CountryDetail } from './CountryDetail';
 
 interface CountryOverviewProps {
@@ -12,7 +13,7 @@ interface CountryOverviewProps {
 export const CountryOverview = ({ desk }: CountryOverviewProps) => {
     const [countries, setCountries] = useState<Country[]>([]);
     const [latestData, setLatestData] = useState<Record<string, MacroIndicator>>({});
-    const [sortConfig, setSortConfig] = useState<{ key: 'RISK' | 'NAME'; direction: 'ASC' | 'DESC' }>({ key: 'RISK', direction: 'DESC' });
+    const [searchQuery, setSearchQuery] = useState('');
     const [filterRegion, setFilterRegion] = useState<string>('ALL');
     const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
 
@@ -44,25 +45,19 @@ export const CountryOverview = ({ desk }: CountryOverviewProps) => {
             result = result.filter(c => c.region === filterRegion);
         }
 
-        // Sort
-        result.sort((a, b) => {
-            if (sortConfig.key === 'RISK') {
-                return sortConfig.direction === 'DESC'
-                    ? b.riskScore - a.riskScore
-                    : a.riskScore - b.riskScore;
-            } else {
-                return a.name.localeCompare(b.name);
-            }
-        });
+        // Search Filter
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            result = result.filter(c =>
+                c.name.toLowerCase().includes(q) ||
+                c.id.toLowerCase().includes(q)
+            );
+        }
+
+        // Sort (Always Alphabetical)
+        result.sort((a, b) => a.name.localeCompare(b.name));
 
         return result;
-    };
-
-    const toggleSort = () => {
-        setSortConfig(prev => ({
-            key: prev.key === 'RISK' ? 'NAME' : 'RISK',
-            direction: 'DESC'
-        }));
     };
 
     const cycleFilter = () => {
@@ -72,34 +67,47 @@ export const CountryOverview = ({ desk }: CountryOverviewProps) => {
     };
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0px', height: '100%' }}>
             {/* Main Column: Sovereign Watchlist */}
-            <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <div style={{ paddingRight: '0px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--bg-tertiary)' }}>
                     <div>
-                        <h1 className="text-2xl" style={{ fontWeight: '600' }}>
+                        <h1 className="text-lg" style={{ color: 'var(--text-primary)', textTransform: 'uppercase' }}>
                             {desk ? `${desk} Desk Monitor` : 'Sovereign Watchlist'}
                         </h1>
-                        <p className="text-secondary">
-                            {desk
-                                ? `Real-time ${desk} market surveillance and opportunities`
-                                : 'Real-time monitoring of sovereign risk and macro divergence'}
-                        </p>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <button className="btn" onClick={cycleFilter}>
-                            Region: {filterRegion}
-                        </button>
-                        <button className="btn" onClick={toggleSort}>
-                            Sort: {sortConfig.key === 'RISK' ? 'High Risk' : 'Name'}
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <div style={{ position: 'relative' }}>
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={12} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                            <input
+                                type="text"
+                                placeholder="SEARCH..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{
+                                    padding: '4px 8px 4px 24px',
+                                    borderRadius: '0',
+                                    border: '1px solid var(--bg-tertiary)',
+                                    background: '#000',
+                                    color: 'var(--text-primary)',
+                                    outline: 'none',
+                                    width: '180px',
+                                    fontSize: '11px',
+                                    fontFamily: 'var(--font-mono)',
+                                    textTransform: 'uppercase'
+                                }}
+                            />
+                        </div>
+                        <button className="btn" onClick={cycleFilter} style={{ fontSize: '11px' }}>
+                            REGION: {filterRegion}
                         </button>
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1px', background: 'var(--bg-tertiary)', padding: '1px' }}>
                     {getSortedAndFilteredCountries().map(country => (
                         latestData[country.id] && (
-                            <div key={country.id} onClick={() => setSelectedCountry(country)} style={{ cursor: 'pointer', transition: 'transform 0.2s' }}>
+                            <div key={country.id} onClick={() => setSelectedCountry(country)} style={{ cursor: 'pointer', background: '#000' }}>
                                 <MacroSnapshot
                                     country={country}
                                     data={latestData[country.id]}
@@ -108,13 +116,6 @@ export const CountryOverview = ({ desk }: CountryOverviewProps) => {
                         )
                     ))}
                 </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', position: 'sticky', top: '24px', height: 'calc(100vh - 48px)' }}>
-                <LatestIntelligence
-                    selectedCountries={getSortedAndFilteredCountries().map(c => c.id)}
-                    regionFilter={filterRegion}
-                />
             </div>
 
             {selectedCountry && (

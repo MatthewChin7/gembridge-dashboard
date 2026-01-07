@@ -17,17 +17,19 @@ export interface Country {
     name: string;
     region: Region;
     currency: string;
-    riskScore: number; // 0-100, 100 is crisis
 }
 
 export interface MacroIndicator {
     countryId: string;
     date: string; // ISO Date
+    isMock?: boolean;
+    source?: string;
 
     // Activity & Output
     gdpGrowth?: number; // Real GDP % y/y
     nominalGdp?: number; // USD bn
     gdpPerCapita?: number; // USD
+    gniPerCapita?: number; // Added for Income Filters
     domesticDemandContribution?: number; // pp [NEW]
     privateConsumption?: number; // % y/y
     fixedInvestment?: number; // % y/y
@@ -40,6 +42,7 @@ export interface MacroIndicator {
     fdi?: number; // % GDP
     externalDebt?: number; // % GDP
     fxReservesBillions?: number;
+    imfCredit?: number; // USD bn [NEW]
     netIip?: number; // % GDP [NEW]
     importCoverage?: number; // months
     araMetric?: number; // % [NEW]

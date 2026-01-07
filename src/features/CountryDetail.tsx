@@ -1,69 +1,144 @@
 import { useEffect, useState } from 'react';
 import { Country, MacroIndicator } from '../types';
 import { MacroService } from '../services/api';
-import { IMFService } from '../services/imf';
-import { X } from 'lucide-react';
+
 import { MacroChart } from '../components/Charts/MacroChart';
+import { ExternalLink } from 'lucide-react';
+import { NewsTerminal } from '../components/Dashboard/NewsTerminal';
 
 interface CountryDetailProps {
     country: Country;
     onClose: () => void;
 }
 
-// Helper component for heatmap cells
-const HeatmapCell = ({ value, col, data, suffix = '', format = '1' }: { value: any, col: keyof MacroIndicator, data: MacroIndicator[], suffix?: string, format?: string }) => {
-    if (typeof value !== 'number') return <td style={{ padding: '8px', textAlign: 'right' }}>-</td>;
+// Helper component for terminal data cells
+const TerminalCell = ({ value, col, suffix = '', format = '1' }: { value: any, col: keyof MacroIndicator, suffix?: string, format?: string }) => {
+    if (typeof value !== 'number') return <td style={{ padding: '4px 8px', textAlign: 'right', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>-</td>;
 
-    // Calculate min/max for this column (memoization would be better in prod but this is small)
-    const values = data.map(d => d[col] as number).filter(v => typeof v === 'number');
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min;
+    let color = 'var(--text-primary)'; // Default Amber
 
-    // Normalize 0-1
-    let intensity = 0;
-    if (range > 0) {
-        intensity = (value - min) / range;
+    // Conditional coloring for specific metrics relative to zero
+    if (['gdpGrowth', 'cpiYoY', 'currentAccountToGdp', 'fiscalBalance'].includes(col)) {
+        if (value > 0) color = 'var(--accent-green)';
+        if (value < 0) color = 'var(--accent-red)';
     }
 
-    // Blue scale: var(--accent-blue) usually is #3b82f6. Let's use rgba.
-    // Low values = transparent/dark bg, High values = more blue opacity
-    const bg = `rgba(59, 130, 246, ${0.1 + (intensity * 0.4)})`; // 0.1 to 0.5 opacity
+    const displayValue = format === '0' ? value.toFixed(0) : value.toFixed(1);
 
     return (
-        <td style={{ padding: '8px', textAlign: 'right', background: bg }}>
-            {format === '0' ? value.toFixed(0) : value.toFixed(1)}{suffix}
+        <td style={{ padding: '4px 8px', textAlign: 'right', color: color, fontFamily: 'var(--font-mono)' }}>
+            {displayValue}{suffix}
         </td>
     );
 };
 
+const METRIC_GROUPS: {
+    title: string;
+    color: string;
+    metrics: {
+        key: keyof MacroIndicator;
+        label: string;
+        suffix?: string;
+        format?: string;
+        scale?: number;
+    }[]
+}[] = [
+        {
+            title: 'ACTIVITY',
+            color: 'var(--text-secondary)', // Cyan
+            metrics: [
+                { key: 'gdpGrowth', label: 'GDP YoY', suffix: '%' },
+                { key: 'nominalGdp', label: 'NOM GDP', format: '0' },
+                { key: 'gdpPerCapita', label: 'GDP/CAP', suffix: 'k', format: '1', scale: 0.001 },
+                { key: 'privateConsumption', label: 'PVT CONS', suffix: '%' },
+                { key: 'fixedInvestment', label: 'FIX INV', suffix: '%' },
+                { key: 'population', label: 'POP (M)' }
+            ]
+        },
+        {
+            title: 'EXTERNAL',
+            color: 'var(--text-secondary)',
+            metrics: [
+                { key: 'currentAccountToGdp', label: 'CA/GDP', suffix: '%' },
+                { key: 'tradeBalanceVal', label: 'TRD BAL' },
+                { key: 'fdi', label: 'FDI %', suffix: '%' },
+                { key: 'externalDebt', label: 'EXT DEBT', suffix: '%' },
+                { key: 'fxReservesBillions', label: 'FX RES', format: '0' },
+                { key: 'importCoverage', label: 'IMP COV' }
+            ]
+        },
+        {
+            title: 'FISCAL',
+            color: 'var(--text-secondary)',
+            metrics: [
+                { key: 'fiscalBalance', label: 'FISC BAL', suffix: '%' },
+                { key: 'govDebtToGdp', label: 'DEBT/GDP', suffix: '%', format: '0' },
+                { key: 'oilGasRevenue', label: 'OIL REV', suffix: '%' }
+            ]
+        },
+        {
+            title: 'PRICES',
+            color: 'var(--text-secondary)',
+            metrics: [
+                { key: 'cpiYoY', label: 'CPI', suffix: '%' },
+                { key: 'exchangeRate', label: 'FX RATE' },
+                { key: 'realInterestRate', label: 'REAL RATE', suffix: '%' }
+            ]
+        },
+        {
+            title: 'BANKING',
+            color: 'var(--text-secondary)',
+            metrics: [
+                { key: 'bankCapitalToAssets', label: 'CAP/AST', suffix: '%' }
+            ]
+        }
+    ];
+
 export const CountryDetail = ({ country, onClose }: CountryDetailProps) => {
-    const [timeRange, setTimeRange] = useState<number>(12); // Months
-    const [viewMode, setViewMode] = useState<'Monthly' | 'Annual'>('Monthly');
-    const [selectedMetric, setSelectedMetric] = useState<keyof MacroIndicator>('gdpGrowth');
+    const [activeTab, setActiveTab] = useState<'MACRO' | 'MARKET'>('MACRO');
+    const [timeRange, setTimeRange] = useState<number>(60); // Default to 5 Years
+    const [viewMode, setViewMode] = useState<'Monthly' | 'Annual'>('Annual');
+    // Multi-metric selection state
+    const [selectedMetrics, setSelectedMetrics] = useState<Set<keyof MacroIndicator>>(new Set(['gdpGrowth']));
     const [history, setHistory] = useState<MacroIndicator[]>([]); // Data source
-    const [imfProgram, setImfProgram] = useState<any>(null);
+
+    // Terminal Colors for Chart Lines
+    const CHART_COLORS = [
+        '#FFFFFF', // White
+        '#FFE600', // Yellow
+        '#FF00FF', // Magenta
+        '#00FFFF', // Cyan
+        '#FF9900', // Orange
+        '#00FF00', // Green
+    ];
+
+    useEffect(() => {
+        // Market data fetch logic removed as it caused unused variable errors and we don't display it yet
+    }, [activeTab, country]);
 
     useEffect(() => {
         MacroService.getMacroData(country.id).then(setHistory);
-        IMFService.getActiveProgram(country.id).then(setImfProgram);
     }, [country]);
 
-    // Data for the Chart: Depends only on timeRange, IGNORE viewMode (always show granular data)
-    // We also reverse it so it goes Left->Right in time for the chart if needed, 
-    // but Recharts usually handles data order if XAxis is set up. 
-    // Usually 'history' is sorted descending (newest first). Recharts likes ascending (oldest first).
-    const chartData = [...history]
-        .slice(0, timeRange) // Take last N months/years
-        .reverse(); // Now oldest to newest
+    const getCutoffDate = () => {
+        const d = new Date();
+        d.setMonth(d.getMonth() - timeRange);
+        return d;
+    };
 
-    // Data for the Table: Depends on timeRange AND viewMode
-    // We keep this Descending (Newest at left/top)
+    const cutoffDate = getCutoffDate();
+
+    // Data for the Chart: Filter by Date, then Reverse (Oldest -> Newest)
+    const chartData = history
+        .filter(d => new Date(d.date) >= cutoffDate)
+        .reverse();
+
+    // Data for the Table: Filter by Date, then by ViewMode (Annual vs Monthly)
     const tableData = history
-        .slice(0, timeRange)
+        .filter(d => new Date(d.date) >= cutoffDate)
         .filter(row => {
             if (viewMode === 'Annual') {
-                return new Date(row.date).getMonth() === 11;
+                return new Date(row.date).getMonth() === 11 || row.source === 'IMF WEO Forecast';
             }
             return true;
         });
@@ -73,247 +148,272 @@ export const CountryDetail = ({ country, onClose }: CountryDetailProps) => {
         setViewMode(mode);
     };
 
+    const toggleMetric = (key: keyof MacroIndicator) => {
+        const newSet = new Set(selectedMetrics);
+        if (newSet.has(key)) {
+            if (newSet.size > 1) newSet.delete(key); // Prevent empty set
+        } else {
+            if (newSet.size < 6) newSet.add(key); // Limit to 6 metrics
+        }
+        setSelectedMetrics(newSet);
+    };
+
+    // Dynamic Column Visibility Logic
+    const visibleMetrics = new Set<string>();
+    METRIC_GROUPS.forEach(group => {
+        group.metrics.forEach(m => {
+            const hasData = tableData.some(row => {
+                const val = row[m.key];
+                return val !== undefined && val !== null;
+            });
+            if (hasData) visibleMetrics.add(m.key as string);
+        });
+    });
+
+    // Prepare metrics configuration for the chart
+    const activeMetricsList = Array.from(selectedMetrics).map((key, index) => {
+        const meta = METRIC_GROUPS.flatMap(g => g.metrics).find(m => m.key === key);
+        // Heuristic: If suffix is '%', put on LEFT axis. Otherwise RIGHT.
+        const yAxisId = meta?.suffix === '%' ? 'left' : 'right';
+
+        return {
+            key,
+            color: CHART_COLORS[index % CHART_COLORS.length],
+            label: meta?.label || key,
+            yAxisId: yAxisId as 'left' | 'right'
+        };
+    });
+
+    const slug = country.name.toLowerCase().replace(/\s+/g, '-');
+
     return (
         <div style={{
-            position: 'fixed', top: 0, right: 0, bottom: 0, width: '900px',
-            // ... (rest is same)
-
-            background: 'var(--bg-secondary)', borderLeft: '1px solid var(--bg-tertiary)',
-            padding: '24px', zIndex: 100, overflowY: 'auto',
-            boxShadow: '-10px 0 30px rgba(0,0,0,0.5)'
+            position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: '1200px',
+            background: 'var(--bg-primary)', borderLeft: '1px solid var(--text-primary)',
+            padding: '16px', zIndex: 100, overflowY: 'auto',
+            boxShadow: 'none'
         }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--text-secondary)', paddingBottom: '8px' }}>
                 <div>
-                    <h2 className="text-xl" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <img
-                            src={`https://flagcdn.com/32x24/${country.id.toLowerCase().slice(0, 2)}.png`}
-                            alt={country.id}
-                            style={{ borderRadius: '2px' }}
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                        />
-                        {country.name} ({country.id})
+                    <h2 className="text-xl" style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                        {country.name.toUpperCase()} <span style={{ color: 'var(--text-secondary)' }}>({country.id})</span>
                     </h2>
-                    <div className="text-sm text-muted">Sovereign Analysis Desk</div>
                 </div>
-                <button onClick={onClose} className="btn" style={{ border: 'none', background: 'transparent' }}>
-                    <X size={24} />
-                </button>
-            </div>
-
-            <div style={{ marginBottom: '24px', display: 'flex', gap: '8px' }}>
-                <button
-                    className={`btn ${timeRange === 12 && viewMode === 'Monthly' ? 'btn-primary' : ''}`}
-                    onClick={() => handleRangeChange(12, 'Monthly')}
-                >
-                    Last 12M
-                </button>
-                <button
-                    className={`btn ${timeRange === 24 && viewMode === 'Monthly' ? 'btn-primary' : ''}`}
-                    onClick={() => handleRangeChange(24, 'Monthly')}
-                >
-                    Last 24M
-                </button>
-                <div style={{ width: '1px', background: 'var(--bg-tertiary)', margin: '0 8px' }} />
-                <button
-                    className={`btn ${timeRange === 60 && viewMode === 'Annual' ? 'btn-primary' : ''}`}
-                    onClick={() => handleRangeChange(60, 'Annual')}
-                >
-                    5 Years (Annual)
-                </button>
-                <button
-                    className={`btn ${timeRange === 120 && viewMode === 'Annual' ? 'btn-primary' : ''}`}
-                    onClick={() => handleRangeChange(120, 'Annual')}
-                >
-                    10 Years (Annual)
-                </button>
-            </div>
-
-            <div style={{ marginBottom: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <h3 className="text-lg">Historical Performace</h3>
-                    <select
-                        className="input"
-                        style={{ width: '200px' }}
-                        value={selectedMetric}
-                        onChange={(e) => setSelectedMetric(e.target.value as keyof MacroIndicator)}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <a
+                        href={`https://data.worldbank.org/country/${slug}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn"
+                        style={{
+                            background: '#000',
+                            color: 'var(--text-secondary)',
+                            border: '1px solid var(--text-secondary)',
+                            textDecoration: 'none',
+                            fontSize: '11px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}
                     >
-                        <option value="gdpGrowth">Real GDP Growth</option>
-                        <option value="cpiYoY">Inflation (CPI)</option>
-                        <option value="policyRate">Policy Rate</option>
-                        <option value="govDebtToGdp">Gov Debt % GDP</option>
-                        <option value="currentAccountToGdp">Current Account % GDP</option>
-                        <option value="fxReservesBillions">FX Reserves ($B)</option>
-                        <option value="exchangeRate">Exchange Rate</option>
-                    </select>
+                        WB DATA <ExternalLink size={12} />
+                    </a>
+                    <a
+                        href={`https://www.imf.org/en/Countries/${country.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn"
+                        style={{
+                            background: '#000',
+                            color: 'var(--text-secondary)',
+                            border: '1px solid var(--text-secondary)',
+                            textDecoration: 'none',
+                            fontSize: '11px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}
+                    >
+                        IMF DATA <ExternalLink size={12} />
+                    </a>
+                    <button onClick={onClose} className="btn" style={{ background: 'var(--accent-red)', color: 'black', border: 'none', fontWeight: 'bold' }}>
+                        CLOSE [X]
+                    </button>
                 </div>
-                <MacroChart
-                    data={chartData}
-                    dataKey={selectedMetric}
-                    title={selectedMetric === 'gdpGrowth' ? 'GDP Growth %' : selectedMetric}
-                />
             </div>
 
-            {/* IMF Section */}
-            <h3 className="text-lg" style={{ marginBottom: '16px' }}>IMF Engagement</h3>
-            <div className="panel" style={{ marginBottom: '24px', overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                    <thead>
-                        <tr style={{ background: 'var(--bg-secondary)', borderBottom: '2px solid var(--accent-blue)', color: 'var(--text-primary)' }}>
-                            <th style={{ padding: '12px', textAlign: 'left' }}>Country</th>
-                            <th style={{ padding: '12px', textAlign: 'right' }}>Access (bn USD)*</th>
-                            <th style={{ padding: '12px', textAlign: 'center' }}>Program type</th>
-                            <th style={{ padding: '12px', textAlign: 'right' }}>Approved</th>
-                            <th style={{ padding: '12px', textAlign: 'right' }}>End</th>
-                            <th style={{ padding: '12px', textAlign: 'right' }}>% of quota</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {imfProgram ? (
-                            <tr style={{ borderBottom: '1px solid var(--bg-tertiary)' }}>
-                                <td style={{ padding: '12px', textAlign: 'left', fontWeight: '500' }}>{country.name}</td>
-                                <td style={{ padding: '12px', textAlign: 'right' }}>{imfProgram.accessAmountBn.toFixed(1)}</td>
-                                <td style={{ padding: '12px', textAlign: 'center' }}>
-                                    <span style={{
-                                        padding: '4px 8px', borderRadius: '4px',
-                                        background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', fontSize: '12px'
-                                    }}>
-                                        {imfProgram.programType}
-                                    </span>
-                                </td>
-                                <td style={{ padding: '12px', textAlign: 'right' }}>{new Date(imfProgram.approvalDate).toLocaleDateString()}</td>
-                                <td style={{ padding: '12px', textAlign: 'right' }}>{new Date(imfProgram.endDate).toLocaleDateString()}</td>
-                                <td style={{ padding: '12px', textAlign: 'right', fontWeight: '500' }}>{imfProgram.quotaPercent}%</td>
-                            </tr>
-                        ) : (
-                            <tr>
-                                <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                    No Active Fund Engagement
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid var(--bg-tertiary)', marginBottom: '16px' }}>
+                <button
+                    className="btn"
+                    style={{
+                        background: activeTab === 'MACRO' ? 'var(--text-primary)' : 'transparent',
+                        color: activeTab === 'MACRO' ? 'black' : 'var(--text-primary)',
+                        border: '1px solid var(--bg-tertiary)',
+                        borderBottom: 'none',
+                        marginRight: '4px',
+                        fontWeight: 'bold'
+                    }}
+                    onClick={() => setActiveTab('MACRO')}
+                >
+                    MACRO FUNDAMENTALS
+                </button>
+                <button
+                    className="btn"
+                    style={{
+                        background: activeTab === 'MARKET' ? 'var(--text-primary)' : 'transparent',
+                        color: activeTab === 'MARKET' ? 'black' : 'var(--text-primary)',
+                        border: '1px solid var(--bg-tertiary)',
+                        borderBottom: 'none',
+                        fontWeight: 'bold'
+                    }}
+                    onClick={() => setActiveTab('MARKET')}
+                >
+                    MARKET MONITOR
+                </button>
             </div>
 
-            <h3 className="text-lg" style={{ marginBottom: '16px' }}>Detailed Macro Analysis</h3>
-            <div className="panel" style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', whiteSpace: 'nowrap' }}>
-                    <thead>
-                        {/* Group Headers */}
-                        <tr style={{ background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
-                            <th style={{ padding: '8px', textAlign: 'left', position: 'sticky', left: 0, background: 'var(--bg-secondary)', zIndex: 2 }}></th>
-                            <th colSpan={8} style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid var(--bg-tertiary)', fontWeight: '600', color: 'var(--accent-blue)' }}>Activity & Output</th>
-                            <th colSpan={10} style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid var(--bg-tertiary)', fontWeight: '600', color: 'var(--accent-purple)' }}>External Sector</th>
-                            <th colSpan={6} style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid var(--bg-tertiary)', fontWeight: '600', color: 'var(--accent-amber)' }}>Public Sector (Fiscal)</th>
-                            <th colSpan={5} style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid var(--bg-tertiary)', fontWeight: '600', color: 'var(--accent-mint)' }}>Prices & Monetary</th>
-                            <th colSpan={5} style={{ padding: '8px', textAlign: 'center', borderBottom: '1px solid var(--bg-tertiary)', fontWeight: '600', color: 'var(--accent-red)' }}>Banking & Risk</th>
-                        </tr>
-                        {/* Metric Headers */}
-                        <tr style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
-                            <th style={{ padding: '8px', textAlign: 'left', position: 'sticky', left: 0, background: 'var(--bg-secondary)', zIndex: 1, borderTop: '1px solid var(--bg-tertiary)' }}>Date</th>
+            {activeTab === 'MACRO' ? (
+                <>
+                    <div style={{ marginBottom: '16px', display: 'flex', gap: '4px' }}>
+                        <button
+                            className={`btn ${timeRange === 60 ? 'btn-primary' : ''}`}
+                            onClick={() => handleRangeChange(60, 'Annual')}
+                        >
+                            5Y
+                        </button>
+                        <button
+                            className={`btn ${timeRange === 120 ? 'btn-primary' : ''}`}
+                            onClick={() => handleRangeChange(120, 'Annual')}
+                        >
+                            10Y
+                        </button>
+                    </div>
 
-                            {/* Activity */}
-                            <th style={{ padding: '8px' }}>Real GDP</th>
-                            <th style={{ padding: '8px' }}>Nom. GDP</th>
-                            <th style={{ padding: '8px' }}>GDP/Cap</th>
-                            <th style={{ padding: '8px' }}>Dom. Demand</th>
-                            <th style={{ padding: '8px' }}>Priv. Cons.</th>
-                            <th style={{ padding: '8px' }}>Fixed Inv.</th>
-                            <th style={{ padding: '8px' }}>Net Exp.</th>
-                            <th style={{ padding: '8px' }}>Pop (M)</th>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '32px' }}>
 
-                            {/* External */}
-                            <th style={{ padding: '8px' }}>CA %</th>
-                            <th style={{ padding: '8px' }}>Trade Bal</th>
-                            <th style={{ padding: '8px' }}>FDI %</th>
-                            <th style={{ padding: '8px' }}>Ext. Debt</th>
-                            <th style={{ padding: '8px' }}>FX Res ($B)</th>
-                            <th style={{ padding: '8px' }}>Net IIP</th>
-                            <th style={{ padding: '8px' }}>Imp. Cov</th>
-                            <th style={{ padding: '8px' }}>ARA %</th>
-                            <th style={{ padding: '8px' }}>Net Fuel</th>
-                            <th style={{ padding: '8px' }}>Oil Break(CA)</th>
+                        {/* Macro Charts Section */}
+                        <div style={{ border: '1px solid var(--bg-tertiary)', padding: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', borderBottom: '1px solid var(--bg-tertiary)', paddingBottom: '4px' }}>
+                                <div style={{ display: 'flex', gap: '16px' }}>
+                                    <h3 className="text-lg" style={{ color: 'var(--text-secondary)' }}>MACRO ANALYSIS</h3>
+                                </div>
+                            </div>
+                            <MacroChart
+                                data={chartData}
+                                metrics={activeMetricsList}
+                                title="Comparative Performance"
+                            />
+                        </div>
 
-                            {/* Fiscal */}
-                            <th style={{ padding: '8px' }}>Fisc. Bal</th>
-                            <th style={{ padding: '8px' }}>Prim. Bal</th>
-                            <th style={{ padding: '8px' }}>Gov Debt</th>
-                            <th style={{ padding: '8px' }}>Oil Rev %</th>
-                            <th style={{ padding: '8px' }}>Subsidies</th>
-                            <th style={{ padding: '8px' }}>Oil Break(Fisc)</th>
+                        {/* Detailed Analysis Table Section */}
+                        <div>
+                            <div style={{ marginBottom: '8px', borderTop: '2px solid var(--text-primary)', paddingTop: '4px' }}>
+                                <h3 className="text-lg" style={{ color: 'var(--text-secondary)' }}>DETAILED ANALYSIS</h3>
+                            </div>
 
-                            {/* Monetary */}
-                            <th style={{ padding: '8px' }}>CPI %</th>
-                            <th style={{ padding: '8px' }}>Eng in CPI</th>
-                            <th style={{ padding: '8px' }}>FX Rate</th>
-                            <th style={{ padding: '8px' }}>Pol. Rate</th>
-                            <th style={{ padding: '8px' }}>Real Rate</th>
+                            <div className="panel" style={{ overflowX: 'auto', padding: 0, border: '1px solid var(--bg-tertiary)' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)' }}>
+                                    <thead>
+                                        {/* Group Headers */}
+                                        <tr style={{ background: '#111' }}>
+                                            <th style={{ padding: '4px 8px', textAlign: 'left', position: 'sticky', left: 0, background: '#111', zIndex: 2 }}></th>
+                                            {METRIC_GROUPS.map(group => {
+                                                const visibleInGroup = group.metrics.filter(m => visibleMetrics.has(m.key));
+                                                if (visibleInGroup.length === 0) return null;
+                                                return (
+                                                    <th key={group.title} colSpan={visibleInGroup.length} style={{ padding: '4px 8px', textAlign: 'center', borderBottom: '1px solid var(--text-secondary)', fontWeight: 'bold', color: group.color }}>
+                                                        {group.title}
+                                                    </th>
+                                                );
+                                            })}
+                                        </tr>
+                                        {/* Metric Headers */}
+                                        <tr style={{ background: '#000', borderBottom: '1px solid var(--bg-tertiary)' }}>
+                                            <th style={{ padding: '4px 8px', textAlign: 'left', position: 'sticky', left: 0, background: '#000', zIndex: 1, borderTop: '1px solid var(--bg-tertiary)', color: 'var(--text-secondary)' }}>DATE</th>
+                                            {METRIC_GROUPS.flatMap(group => group.metrics).filter(m => visibleMetrics.has(m.key)).map(m => {
+                                                const isSelected = selectedMetrics.has(m.key);
+                                                const metricIndex = activeMetricsList.findIndex(am => am.key === m.key);
+                                                // If selected, get its color, else default
+                                                const headerColor = isSelected && metricIndex >= 0 ? activeMetricsList[metricIndex].color : 'var(--text-secondary)';
 
-                            {/* Banking */}
-                            <th style={{ padding: '8px' }}>Cap/Ast</th>
-                            <th style={{ padding: '8px' }}>Loan/Dep</th>
-                            <th style={{ padding: '8px' }}>Cred. Gro</th>
-                            <th style={{ padding: '8px' }}>Rating</th>
-                            <th style={{ padding: '8px' }}>Outlook</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {tableData.map((row, i) => (
-                            <tr key={i} style={{ borderBottom: '1px solid var(--bg-tertiary)' }}>
-                                <td style={{ padding: '8px', textAlign: 'left', position: 'sticky', left: 0, background: 'var(--bg-secondary)', borderRight: '1px solid var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
-                                    {viewMode === 'Annual'
-                                        ? new Date(row.date).getFullYear()
-                                        : new Date(row.date).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })}
-                                </td>
+                                                return (
+                                                    <th
+                                                        key={m.key}
+                                                        onClick={() => toggleMetric(m.key)}
+                                                        style={{
+                                                            cursor: 'pointer',
+                                                            padding: '4px 8px',
+                                                            color: headerColor,
+                                                            textAlign: 'right',
+                                                            background: isSelected ? '#222' : 'transparent',
+                                                            borderBottom: isSelected ? `2px solid ${headerColor}` : '1px solid var(--bg-tertiary)'
+                                                        }}
+                                                    >
+                                                        {m.label}
+                                                    </th>
+                                                );
+                                            })}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {tableData.map((row, i) => (
+                                            <tr key={i} style={{ borderBottom: '1px solid var(--bg-tertiary)' }}>
+                                                <td style={{ padding: '4px 8px', textAlign: 'left', position: 'sticky', left: 0, background: '#000', borderRight: '1px solid var(--bg-tertiary)', color: 'var(--text-tertiary)' }}>
+                                                    {viewMode === 'Annual'
+                                                        ? `${new Date(row.date).getFullYear()}${row.source?.includes('Forecast') ? ' (E)' : ''}`
+                                                        : new Date(row.date).toLocaleDateString(undefined, { month: 'short', year: '2-digit' }).toUpperCase()}
+                                                </td>
+                                                {METRIC_GROUPS.flatMap(group => group.metrics).filter(m => visibleMetrics.has(m.key)).map(m => {
+                                                    const rawVal = row[m.key] as number | undefined;
+                                                    const val = rawVal !== undefined && m.scale ? rawVal * m.scale : rawVal;
+                                                    return (
+                                                        <TerminalCell
+                                                            key={m.key}
+                                                            value={val}
+                                                            col={m.key}
+                                                            suffix={m.suffix}
+                                                            format={m.format}
+                                                        />
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
 
-                                {/* Activity */}
-                                <HeatmapCell value={row.gdpGrowth} col="gdpGrowth" data={tableData} suffix="%" />
-                                <HeatmapCell value={row.nominalGdp} col="nominalGdp" data={tableData} format="0" />
-                                <HeatmapCell value={row.gdpPerCapita ? row.gdpPerCapita / 1000 : undefined} col="gdpPerCapita" data={tableData} suffix="k" format="1" />
-                                <HeatmapCell value={row.domesticDemandContribution} col="domesticDemandContribution" data={tableData} />
-                                <HeatmapCell value={row.privateConsumption} col="privateConsumption" data={tableData} suffix="%" />
-                                <HeatmapCell value={row.fixedInvestment} col="fixedInvestment" data={tableData} suffix="%" />
-                                <HeatmapCell value={row.netExportsContribution} col="netExportsContribution" data={tableData} />
-                                <HeatmapCell value={row.population} col="population" data={tableData} />
-
-                                {/* External */}
-                                <HeatmapCell value={row.currentAccountToGdp} col="currentAccountToGdp" data={tableData} suffix="%" />
-                                <HeatmapCell value={row.tradeBalanceVal} col="tradeBalanceVal" data={tableData} />
-                                <HeatmapCell value={row.fdi} col="fdi" data={tableData} suffix="%" />
-                                <HeatmapCell value={row.externalDebt} col="externalDebt" data={tableData} suffix="%" />
-                                <HeatmapCell value={row.fxReservesBillions} col="fxReservesBillions" data={tableData} format="0" />
-                                <HeatmapCell value={row.netIip} col="netIip" data={tableData} suffix="%" format="0" />
-                                <HeatmapCell value={row.importCoverage} col="importCoverage" data={tableData} />
-                                <HeatmapCell value={row.araMetric} col="araMetric" data={tableData} suffix="%" format="0" />
-                                <HeatmapCell value={row.netFuelExports} col="netFuelExports" data={tableData} suffix="%" />
-                                <HeatmapCell value={row.breakevenOilCa} col="breakevenOilCa" data={tableData} format="0" />
-
-                                {/* Fiscal */}
-                                <HeatmapCell value={row.fiscalBalance} col="fiscalBalance" data={tableData} suffix="%" />
-                                <HeatmapCell value={row.primaryBalance} col="primaryBalance" data={tableData} suffix="%" />
-                                <HeatmapCell value={row.govDebtToGdp} col="govDebtToGdp" data={tableData} suffix="%" format="0" />
-                                <HeatmapCell value={row.oilGasRevenue} col="oilGasRevenue" data={tableData} suffix="%" />
-                                <HeatmapCell value={row.energySubsidies} col="energySubsidies" data={tableData} suffix="%" />
-                                <HeatmapCell value={row.breakevenOilFiscal} col="breakevenOilFiscal" data={tableData} format="0" />
-
-                                {/* Monetary */}
-                                <HeatmapCell value={row.cpiYoY} col="cpiYoY" data={tableData} suffix="%" />
-                                <HeatmapCell value={row.energyInCpi} col="energyInCpi" data={tableData} suffix="%" format="0" />
-                                <HeatmapCell value={row.exchangeRate} col="exchangeRate" data={tableData} />
-                                <HeatmapCell value={row.policyRate} col="policyRate" data={tableData} suffix="%" />
-                                <HeatmapCell value={row.realInterestRate} col="realInterestRate" data={tableData} suffix="%" />
-
-                                {/* Banking - some text, some number */}
-                                <HeatmapCell value={row.bankCapitalToAssets} col="bankCapitalToAssets" data={tableData} suffix="%" />
-                                <HeatmapCell value={row.loansToDeposits} col="loansToDeposits" data={tableData} suffix="%" format="0" />
-                                <HeatmapCell value={row.creditGrowth} col="creditGrowth" data={tableData} suffix="%" />
-                                <td style={{ padding: '8px', textAlign: 'right' }}>{row.creditRating}</td>
-                                <td style={{ padding: '8px', textAlign: 'right' }}>{row.ratingOutlook}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        {/* News Terminal Section */}
+                        <div>
+                            <div style={{ marginBottom: '8px', borderTop: '2px solid var(--text-primary)', paddingTop: '4px' }}>
+                                <h3 className="text-lg" style={{ color: 'var(--text-secondary)' }}>LATEST INTELLIGENCE</h3>
+                            </div>
+                            <div style={{ height: '400px', border: '1px solid var(--bg-tertiary)' }}>
+                                <NewsTerminal selectedCountries={[country.id]} />
+                            </div>
+                        </div>
+                    </div>
+                </>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {/* Market View (Keep simple for now, can refactor if needed) */}
+                    {/* Assuming marketHistory is available in scope, otherwise this will error */}
+                    {/* If marketHistory is not available or not used, consider commenting this out or providing a placeholder */}
+                    {/* For now, using a simple placeholder structure */}
+                    <div style={{ color: 'var(--text-secondary)' }}>Live Charting Coming Soon</div>
+                    {/*
+                    {marketHistory.length > 0 ? (
+                        <div style={{ color: 'var(--text-secondary)' }}>Live Charting Coming Soon</div>
+                    ) : (
+                        <div className="panel" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            Loading Market Data...
+                        </div>
+                    )}
+                    */}
+                </div>
+            )}
         </div>
     );
 };
