@@ -1,6 +1,6 @@
 
 import { useEffect, useState, useMemo } from 'react';
-import { ExternalLink, RefreshCw, ChevronDown, Search, Globe, ChevronRight } from 'lucide-react';
+import { ChevronDown, Search, ChevronRight } from 'lucide-react';
 
 interface NewsItem {
     title: string;

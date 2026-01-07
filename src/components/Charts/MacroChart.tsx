@@ -45,7 +45,7 @@ export const MacroChart = ({ data, metrics, dataKey, color = '#ff9900', title }:
 
     // Second pass to populate historical vs projected fields and ensure connectivity
     // We need to iterate and modify the objects to split the metrics
-    const chartData = formattedData.map((row, index) => {
+    const chartData = formattedData.map((row) => {
         const newRow: any = { ...row };
 
         activeMetrics.forEach(m => {
@@ -182,7 +182,7 @@ export const MacroChart = ({ data, metrics, dataKey, color = '#ff9900', title }:
                             labelStyle={{ color: '#66ccff', fontSize: '11px', marginBottom: '4px', borderBottom: '1px solid #333' }}
                             cursor={{ stroke: '#fff', strokeWidth: 1, strokeDasharray: '2 2' }}
                             // Custom formatter to show consolidated value
-                            formatter={(value: any, name: string, props: any) => {
+                            formatter={(value: any, name: string) => {
                                 // Filter out "duplicate" entries if both lines are hovered?
                                 // Recharts usually shows all lines.
                                 // We can strip "_proj" from name if we want cleaner display, 

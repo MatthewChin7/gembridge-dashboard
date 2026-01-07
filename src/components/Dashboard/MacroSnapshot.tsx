@@ -1,11 +1,9 @@
-import { Country, MacroIndicator } from '../../types';
+import { Country } from '../../types';
 
-interface MacroSnapshotProps {
-    country: Country;
-    data: MacroIndicator;
-}
 
-export const MacroSnapshot = ({ country, data }: MacroSnapshotProps) => {
+
+// Note: data prop was unused, simplified to only take country
+export const MacroSnapshot = ({ country }: { country: Country, data?: any }) => {
     return (
         <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
