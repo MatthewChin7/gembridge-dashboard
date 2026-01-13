@@ -1,6 +1,6 @@
 
 import { useEffect, useState, useMemo } from 'react';
-import { ChevronDown, Search, ChevronRight } from 'lucide-react';
+import { Search, ChevronRight } from 'lucide-react';
 
 interface NewsItem {
     title: string;
@@ -27,8 +27,6 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<ViewMode>('TOP');
     const [assetFilter, setAssetFilter] = useState<AssetClass>('ALL');
-    const [showActionsMenu, setShowActionsMenu] = useState(false);
-    const [showRegionMenu, setShowRegionMenu] = useState(false);
 
     // Fetch Logic
     const fetchNews = async () => {
@@ -45,7 +43,7 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
             }
 
             // Public RSS to JSON Proxy
-            const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+            const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query + ' when:7d')}&hl=en-US&gl=US&ceid=US:en`;
             const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
 
             const res = await fetch(apiUrl);
@@ -70,7 +68,8 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
                             titleLower.includes('google news') ||
                             item.title.length < 15; // Too short to be a real headline
                         return !isGenericSection;
-                    });
+                    })
+                    .sort((a: any, b: any) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
 
                 setNews(items);
                 setLastUpdated(new Date());
@@ -173,9 +172,8 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
             }}>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <div style={{ background: '#0033cc', padding: '0 4px', fontSize: '12px', fontWeight: 'bold' }}>N {viewMode}</div>
-                    <div style={{ color: TEXT_AMBER, fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                    <div style={{ color: TEXT_AMBER, fontSize: '13px', fontWeight: 'bold' }}>
                         {selectedCountries.length > 0 ? selectedCountries.join(' | ') : 'GLOBAL'}
-                        <ChevronDown size={12} style={{ marginLeft: 4, cursor: 'pointer' }} onClick={() => setShowRegionMenu(!showRegionMenu)} />
                     </div>
                 </div>
                 <div style={{ fontSize: '11px', color: '#666' }}>
@@ -183,18 +181,6 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
                 </div>
             </div>
 
-            {/* Region/Context Menu (Mockup) */}
-            {showRegionMenu && (
-                <div style={{
-                    position: 'absolute', top: '28px', left: '60px', background: '#222',
-                    border: '1px solid #555', zIndex: 50, padding: '4px', fontSize: '11px'
-                }}>
-                    <div style={{ padding: '4px', cursor: 'pointer', color: 'white' }}>North America</div>
-                    <div style={{ padding: '4px', cursor: 'pointer', color: 'white' }}>EMEA</div>
-                    <div style={{ padding: '4px', cursor: 'pointer', color: 'white' }}>APAC</div>
-                    <div style={{ padding: '4px', cursor: 'pointer', color: 'white' }}>LATAM</div>
-                </div>
-            )}
 
             {/* Red Bar Menu (Functions) */}
             <div style={{
@@ -207,13 +193,6 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
                 gap: '12px',
                 alignItems: 'center'
             }}>
-                <div
-                    onClick={() => setShowActionsMenu(!showActionsMenu)}
-                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                >
-                    Actions <ChevronDown size={10} />
-                </div>
-                <span style={{ opacity: 0.5 }}>|</span>
                 <span onClick={() => setViewMode('TOP')} style={{ cursor: 'pointer', textDecoration: viewMode === 'TOP' ? 'underline' : '' }}>TOP</span>
                 <span onClick={() => setViewMode('FIRST_WORD')} style={{ cursor: 'pointer', textDecoration: viewMode === 'FIRST_WORD' ? 'underline' : '' }}>FrtWrd</span>
                 <span onClick={() => setViewMode('DAYBREAK')} style={{ cursor: 'pointer', textDecoration: viewMode === 'DAYBREAK' ? 'underline' : '' }}>DayBrk</span>
@@ -228,17 +207,6 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
                 </div>
             </div>
 
-            {/* Actions Menu (Mockup) */}
-            {showActionsMenu && (
-                <div style={{
-                    position: 'absolute', top: '50px', left: '8px', background: '#222',
-                    border: '1px solid #555', zIndex: 50, padding: '4px', minWidth: '150px'
-                }}>
-                    <div style={{ padding: '4px', borderBottom: '1px solid #444', fontSize: '11px' }}>Advanced Search...</div>
-                    <div style={{ padding: '4px', borderBottom: '1px solid #444', fontSize: '11px' }}>Set Alerts</div>
-                    <div style={{ padding: '4px', fontSize: '11px' }}>Export to Excel</div>
-                </div>
-            )}
 
             {/* Search Input Line */}
             <div style={{
@@ -270,7 +238,6 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
                         placeholderColor: '#444'
                     } as any}
                 />
-                <span style={{ fontSize: '10px' }}>95) Headlines</span>
             </div>
 
             {/* Content Area */}
@@ -281,7 +248,7 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
                     <>
                         <div style={{ marginBottom: '16px' }}>
                             <div style={{ borderBottom: `1px solid ${SEPARATOR}`, marginBottom: '4px', color: TEXT_BLUE, fontSize: '13px', fontWeight: 'bold' }}>
-                                Top Ranked News | More »
+                                Top Ranked News
                             </div>
                             {topNews.map((item, idx) => (
                                 <div key={idx} style={{ display: 'flex', fontSize: '13px', marginBottom: '4px', lineHeight: '1.4' }}>
@@ -289,7 +256,9 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
                                     <a href={item.link} target="_blank" rel="noreferrer" style={{ color: TEXT_WHITE, textDecoration: 'none', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {item.title}
                                     </a>
-                                    <span style={{ color: TEXT_BLUE, marginLeft: '8px', fontSize: '10px' }}>DJ</span>
+                                    <span style={{ color: TEXT_BLUE, marginLeft: '8px', fontSize: '10px', whiteSpace: 'nowrap' }}>
+                                        {new Date(item.pubDate).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                    </span>
                                 </div>
                             ))}
                         </div>
@@ -299,11 +268,13 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
                             </div>
                             {timeNews.map((item, idx) => (
                                 <div key={idx} style={{ display: 'flex', fontSize: '13px', marginBottom: '2px', lineHeight: '1.4' }}>
-                                    <span style={{ color: TEXT_BLUE, marginRight: '8px', width: '30px' }}>{900 - idx})</span>
+                                    <span style={{ color: TEXT_BLUE, marginRight: '8px', width: '30px' }}>{idx + 4})</span>
                                     <a href={item.link} target="_blank" rel="noreferrer" style={{ color: TEXT_AMBER, textDecoration: 'none', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {item.title}
                                     </a>
-                                    <span style={{ color: TEXT_AMBER, marginLeft: '8px', fontSize: '11px' }}>{new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span style={{ color: TEXT_AMBER, marginLeft: '8px', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                                        {new Date(item.pubDate).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                    </span>
                                 </div>
                             ))}
                         </div>
@@ -320,7 +291,9 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
                             <div key={idx} style={{ display: 'flex', fontSize: '12px', marginBottom: '6px', lineHeight: '1.4', alignItems: 'flex-start' }}>
                                 <ChevronRight size={12} color={TEXT_AMBER} style={{ marginTop: 2, marginRight: 4 }} />
                                 <a href={item.link} target="_blank" rel="noreferrer" style={{ color: TEXT_WHITE, textDecoration: 'none', flex: 1 }}>
-                                    <span style={{ color: TEXT_AMBER, fontWeight: 'bold' }}>{new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}: </span>
+                                    <span style={{ color: TEXT_AMBER, fontWeight: 'bold' }}>
+                                        {new Date(item.pubDate).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}:
+                                    </span>
                                     {item.title}
                                 </a>
                             </div>
@@ -340,7 +313,9 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
                                 <a href={item.link} target="_blank" rel="noreferrer" style={{ color: TEXT_AMBER, textDecoration: 'none', fontSize: '13px', display: 'block', fontWeight: 'bold' }}>
                                     {item.title}
                                 </a>
-                                <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>Source: {item.source} • {new Date(item.pubDate).toLocaleTimeString()}</div>
+                                <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                                    Source: {item.source} • {new Date(item.pubDate).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                </div>
                             </div>
                         ))}
                     </div>
