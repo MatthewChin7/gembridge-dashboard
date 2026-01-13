@@ -44,5 +44,19 @@ export const MarketService = {
             console.error('Market History Error:', error);
             return [];
         }
+    },
+
+    async getPredictionMarkets(countryCode: string): Promise<any[]> {
+        // Backend URL (assumed running locally on port 8000)
+        const url = `http://localhost:8000/markets/${countryCode}`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Failed to fetch prediction markets');
+            return await response.json();
+        } catch (error) {
+            console.error('Prediction Market Error:', error);
+            return [];
+        }
     }
 };

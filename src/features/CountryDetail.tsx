@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
+
+import { useEffect, useState, Fragment } from 'react';
 import { Country, MacroIndicator } from '../types';
 import { MacroService } from '../services/api';
-
+import { MarketService } from '../services/market';
 import { MacroChart } from '../components/Charts/MacroChart';
 import { ExternalLink } from 'lucide-react';
 import { NewsTerminal } from '../components/Dashboard/NewsTerminal';
+import { MarketSentimentCard } from '../components/Dashboard/MarketSentimentCard';
+import { DetailedLegend } from '../components/Analytics/DetailedLegend';
 
 interface CountryDetailProps {
     country: Country;
@@ -101,6 +104,9 @@ export const CountryDetail = ({ country, onClose }: CountryDetailProps) => {
     // Multi-metric selection state
     const [selectedMetrics, setSelectedMetrics] = useState<Set<keyof MacroIndicator>>(new Set(['gdpGrowth']));
     const [history, setHistory] = useState<MacroIndicator[]>([]); // Data source
+    const [globalHistory, setGlobalHistory] = useState<MacroIndicator[]>([]);
+    const [showGlobalAverage, setShowGlobalAverage] = useState(false);
+    const [predictionMarkets, setPredictionMarkets] = useState<any[]>([]);
 
     // Terminal Colors for Chart Lines
     const CHART_COLORS = [
@@ -113,12 +119,18 @@ export const CountryDetail = ({ country, onClose }: CountryDetailProps) => {
     ];
 
     useEffect(() => {
-        // Market data fetch logic removed as it caused unused variable errors and we don't display it yet
-    }, [activeTab, country]);
+        MarketService.getPredictionMarkets(country.id).then(setPredictionMarkets);
+    }, [country]);
 
     useEffect(() => {
         MacroService.getMacroData(country.id).then(setHistory);
     }, [country]);
+
+    useEffect(() => {
+        if (showGlobalAverage && globalHistory.length === 0) {
+            MacroService.getGlobalMacroData(10).then(setGlobalHistory);
+        }
+    }, [showGlobalAverage, globalHistory]);
 
     const getCutoffDate = () => {
         const d = new Date();
@@ -128,20 +140,68 @@ export const CountryDetail = ({ country, onClose }: CountryDetailProps) => {
 
     const cutoffDate = getCutoffDate();
 
-    // Data for the Chart: Filter by Date, then Reverse (Oldest -> Newest)
-    const chartData = history
-        .filter(d => new Date(d.date) >= cutoffDate)
-        .reverse();
+    // Unified Data for the Chart: Include years from Global History if enabled
+    const unifiedChartHistory = [...history];
+    if (showGlobalAverage) {
+        globalHistory.forEach(gRow => {
+            const gYear = new Date(gRow.date).getFullYear();
+            if (!unifiedChartHistory.some(h => new Date(h.date).getFullYear() === gYear)) {
+                unifiedChartHistory.push({
+                    countryId: country.id,
+                    date: gRow.date,
+                    source: 'Global Data Only'
+                } as MacroIndicator);
+            }
+        });
+    }
 
-    // Data for the Table: Filter by Date, then by ViewMode (Annual vs Monthly)
-    const tableData = history
+    const baseChartData = unifiedChartHistory
+        .filter(d => new Date(d.date) >= cutoffDate)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // Merge Global Average into Chart Data
+    const chartData = baseChartData.map(row => {
+        const year = new Date(row.date).getFullYear();
+        const globalRow = globalHistory.find(g => new Date(g.date).getFullYear() === year);
+
+        if (globalRow && showGlobalAverage) {
+            const merged = { ...row };
+            selectedMetrics.forEach(key => {
+                if (globalRow[key] !== undefined) {
+                    (merged as any)[`${key}_avg`] = globalRow[key];
+                }
+            });
+            return merged;
+        }
+        return row;
+    });
+
+    // Unified Data for the Table: Include years from Global History if enabled
+    const unifiedHistory = [...history];
+    if (showGlobalAverage) {
+        globalHistory.forEach(gRow => {
+            const gYear = new Date(gRow.date).getFullYear();
+            if (!unifiedHistory.some(h => new Date(h.date).getFullYear() === gYear)) {
+                // Add placeholder row for years only present in global data
+                unifiedHistory.push({
+                    countryId: country.id,
+                    date: gRow.date,
+                    source: 'Global Data Only'
+                } as MacroIndicator);
+            }
+        });
+    }
+
+    const tableData = unifiedHistory
         .filter(d => new Date(d.date) >= cutoffDate)
         .filter(row => {
             if (viewMode === 'Annual') {
-                return new Date(row.date).getMonth() === 11 || row.source === 'IMF WEO Forecast';
+                // Include Dec (Annual) or Forecast rows
+                return new Date(row.date).getMonth() === 11 || row.source?.includes('Forecast');
             }
             return true;
-        });
+        })
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const handleRangeChange = (months: number, mode: 'Monthly' | 'Annual') => {
         setTimeRange(months);
@@ -198,6 +258,11 @@ export const CountryDetail = ({ country, onClose }: CountryDetailProps) => {
                 <div>
                     <h2 className="text-xl" style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
                         {country.name.toUpperCase()} <span style={{ color: 'var(--text-secondary)' }}>({country.id})</span>
+                        {country.developmentStatus && (
+                            <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '100px', border: '1px solid var(--bg-tertiary)' }}>
+                                {country.developmentStatus.toUpperCase()}
+                            </span>
+                        )}
                     </h2>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -289,6 +354,18 @@ export const CountryDetail = ({ country, onClose }: CountryDetailProps) => {
                         >
                             10Y
                         </button>
+                        <div style={{ flex: 1 }}></div>
+                        <button
+                            className={`btn ${showGlobalAverage ? 'btn-primary' : ''}`}
+                            onClick={() => setShowGlobalAverage(!showGlobalAverage)}
+                            style={{
+                                fontSize: '11px',
+                                border: showGlobalAverage ? '1px solid var(--text-primary)' : '1px solid var(--bg-tertiary)',
+                                color: showGlobalAverage ? '#000' : 'var(--text-secondary)'
+                            }}
+                        >
+                            {showGlobalAverage ? 'HIDE GLOBAL AVERAGE' : 'SHOW GLOBAL AVERAGE'}
+                        </button>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '32px' }}>
@@ -331,7 +408,7 @@ export const CountryDetail = ({ country, onClose }: CountryDetailProps) => {
                                         </tr>
                                         {/* Metric Headers */}
                                         <tr style={{ background: '#000', borderBottom: '1px solid var(--bg-tertiary)' }}>
-                                            <th style={{ padding: '4px 8px', textAlign: 'left', position: 'sticky', left: 0, background: '#000', zIndex: 1, borderTop: '1px solid var(--bg-tertiary)', color: 'var(--text-secondary)' }}>DATE</th>
+                                            <th style={{ padding: '4px 8px', textAlign: 'left', position: 'sticky', left: 0, background: '#000', zIndex: 1, borderTop: '1px solid var(--bg-tertiary)', color: 'var(--text-secondary)', width: '80px', minWidth: '80px' }}>DATE</th>
                                             {METRIC_GROUPS.flatMap(group => group.metrics).filter(m => visibleMetrics.has(m.key)).map(m => {
                                                 const isSelected = selectedMetrics.has(m.key);
                                                 const metricIndex = activeMetricsList.findIndex(am => am.key === m.key);
@@ -358,31 +435,55 @@ export const CountryDetail = ({ country, onClose }: CountryDetailProps) => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {tableData.map((row, i) => (
-                                            <tr key={i} style={{ borderBottom: '1px solid var(--bg-tertiary)' }}>
-                                                <td style={{ padding: '4px 8px', textAlign: 'left', position: 'sticky', left: 0, background: '#000', borderRight: '1px solid var(--bg-tertiary)', color: 'var(--text-tertiary)' }}>
-                                                    {viewMode === 'Annual'
-                                                        ? `${new Date(row.date).getFullYear()}${row.source?.includes('Forecast') ? ' (E)' : ''}`
-                                                        : new Date(row.date).toLocaleDateString(undefined, { month: 'short', year: '2-digit' }).toUpperCase()}
-                                                </td>
-                                                {METRIC_GROUPS.flatMap(group => group.metrics).filter(m => visibleMetrics.has(m.key)).map(m => {
-                                                    const rawVal = row[m.key] as number | undefined;
-                                                    const val = rawVal !== undefined && m.scale ? rawVal * m.scale : rawVal;
-                                                    return (
-                                                        <TerminalCell
-                                                            key={m.key}
-                                                            value={val}
-                                                            col={m.key}
-                                                            suffix={m.suffix}
-                                                            format={m.format}
-                                                        />
-                                                    );
-                                                })}
-                                            </tr>
-                                        ))}
+                                        {tableData.map((row, i) => {
+                                            const year = new Date(row.date).getFullYear();
+                                            const globalRow = globalHistory.find(g => new Date(g.date).getFullYear() === year);
+
+                                            return (
+                                                <Fragment key={i}>
+                                                    <tr style={{ borderBottom: '1px solid var(--bg-tertiary)' }}>
+                                                        <td style={{ padding: '4px 8px', textAlign: 'left', position: 'sticky', left: 0, background: '#111', borderRight: '1px solid var(--bg-tertiary)', color: 'var(--text-tertiary)', width: '80px', minWidth: '80px' }}>
+                                                            {viewMode === 'Annual'
+                                                                ? `${new Date(row.date).getFullYear()}${row.source?.includes('Forecast') ? ' (E)' : ''}`
+                                                                : new Date(row.date).toLocaleDateString(undefined, { month: 'short', year: '2-digit' }).toUpperCase()}
+                                                        </td>
+                                                        {METRIC_GROUPS.flatMap(group => group.metrics).filter(m => visibleMetrics.has(m.key)).map(m => {
+                                                            const rawVal = row[m.key] as number | undefined;
+                                                            const val = rawVal !== undefined && m.scale ? rawVal * m.scale : rawVal;
+                                                            return (
+                                                                <TerminalCell
+                                                                    key={m.key}
+                                                                    value={val}
+                                                                    col={m.key}
+                                                                    suffix={m.suffix}
+                                                                    format={m.format}
+                                                                />
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                    {showGlobalAverage && globalRow && (
+                                                        <tr style={{ borderBottom: '1px solid var(--bg-tertiary)', background: '#050505', opacity: 0.8 }}>
+                                                            <td style={{ padding: '2px 8px', textAlign: 'left', position: 'sticky', left: 0, background: '#050505', borderRight: '1px solid var(--bg-tertiary)', color: 'var(--text-tertiary)', fontSize: '9px', fontStyle: 'italic' }}>
+                                                                WORLD AVG
+                                                            </td>
+                                                            {METRIC_GROUPS.flatMap(group => group.metrics).filter(m => visibleMetrics.has(m.key)).map(m => {
+                                                                const rawVal = globalRow[m.key] as number | undefined;
+                                                                const val = rawVal !== undefined && m.scale ? rawVal * m.scale : rawVal;
+                                                                return (
+                                                                    <td key={`global-${m.key}`} style={{ padding: '2px 8px', textAlign: 'right', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontSize: '9px', fontStyle: 'italic' }}>
+                                                                        {val !== undefined ? (m.format === '0' ? val.toFixed(0) : val.toFixed(1)) : '-'}{m.suffix}
+                                                                    </td>
+                                                                );
+                                                            })}
+                                                        </tr>
+                                                    )}
+                                                </Fragment>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
+                            <DetailedLegend visibleMetrics={visibleMetrics} />
                         </div>
 
                         {/* News Terminal Section */}
@@ -394,24 +495,27 @@ export const CountryDetail = ({ country, onClose }: CountryDetailProps) => {
                                 <NewsTerminal selectedCountries={[country.id]} />
                             </div>
                         </div>
+
+                        {/* Market Sentiment Section */}
+                        {predictionMarkets.length > 0 && (
+                            <div>
+                                <div style={{ marginBottom: '8px', borderTop: '2px solid var(--text-primary)', paddingTop: '4px' }}>
+                                    <h3 className="text-lg" style={{ color: 'var(--text-secondary)' }}>MARKET SENTIMENT</h3>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                                    {predictionMarkets.map(market => (
+                                        <MarketSentimentCard key={market.id} market={market} />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {/* Market View (Keep simple for now, can refactor if needed) */}
-                    {/* Assuming marketHistory is available in scope, otherwise this will error */}
-                    {/* If marketHistory is not available or not used, consider commenting this out or providing a placeholder */}
-                    {/* For now, using a simple placeholder structure */}
+
                     <div style={{ color: 'var(--text-secondary)' }}>Live Charting Coming Soon</div>
-                    {/*
-                    {marketHistory.length > 0 ? (
-                        <div style={{ color: 'var(--text-secondary)' }}>Live Charting Coming Soon</div>
-                    ) : (
-                        <div className="panel" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                            Loading Market Data...
-                        </div>
-                    )}
-                    */}
+
                 </div>
             )}
         </div>

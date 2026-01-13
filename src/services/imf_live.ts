@@ -28,8 +28,9 @@ export const IMFService = {
 
         try {
             const indicators = Object.values(IMF_INDICATORS).join('/');
+            const imfCountryId = countryId === 'WLD' ? '001' : countryId;
             // Use local proxy to avoid CORS
-            const url = `/api/imf/${indicators}/${countryId}`;
+            const url = `/api/imf/${indicators}/${imfCountryId}`;
 
             const response = await fetch(url);
             if (!response.ok) return [];
@@ -39,7 +40,7 @@ export const IMFService = {
 
             if (!values) return [];
 
-            const getVal = (code: string, y: number) => values[code]?.[countryId]?.[y];
+            const getVal = (code: string, y: number) => values[code]?.[imfCountryId]?.[y];
 
             return nextYears.map(y => ({
                 countryId,
@@ -72,8 +73,9 @@ export const IMFService = {
             // format: values -> { "NGDP_RPCH": { "BRA": { "2024": 2.1, "2025": 2.4 } } }
 
             const indicators = Object.values(IMF_INDICATORS).join('/');
+            const imfCountryId = countryId === 'WLD' ? '001' : countryId;
             // Use local proxy to avoid CORS
-            const url = `/api/imf/${indicators}/${countryId}`;
+            const url = `/api/imf/${indicators}/${imfCountryId}`;
 
             const response = await fetch(url);
             if (!response.ok) return {};
@@ -84,7 +86,7 @@ export const IMFService = {
             if (!values) return {};
 
             const getValue = (code: string, targetYear: number) => {
-                const countryData = values[code]?.[countryId];
+                const countryData = values[code]?.[imfCountryId];
                 if (!countryData) return undefined;
                 // Try target year, fallback to previous if not found (lag), or next if forecast
                 return parseFloat(countryData[targetYear] || countryData[targetYear - 1]);

@@ -54,12 +54,15 @@ export const WorldBankService = {
             const rawCountries = json[1];
 
             return rawCountries
-                .filter((c: any) => c.region.value !== 'Aggregates') // Filter out "World", "Africa", etc.
+                .filter((c: any) => c.region.value !== 'Aggregates' && c.region.id !== 'NA')
                 .map((c: any) => ({
                     id: c.id, // ISO3 Code e.g. ARG
                     name: c.name,
-                    region: this.mapRegion(c.region.value),
-                    currency: 'USD', // Helper: WB doesn't return currency in this endpoint easily, defaulting for now
+                    region: this.mapRegion(c.region.value, c.id),
+                    currency: 'USD',
+                    incomeLevel: c.incomeLevel.value,
+                    lendingType: c.lendingType.value,
+                    developmentStatus: this.deriveStatus(c.incomeLevel.id, c.lendingType.id, c.id)
                 }));
 
         } catch (e) {
@@ -68,13 +71,34 @@ export const WorldBankService = {
         }
     },
 
-    mapRegion(wbRegion: string): 'LATAM' | 'EMEA' | 'ASIA' | 'G10' {
-        // Simple heuristic mapping
+    deriveStatus(incomeId: string, lendingId: string, iso3: string): 'Developed' | 'Emerging' | 'Developing' | 'Frontier' {
+        // Standard classifications
+        // 1. Developed (High Income + No Lending)
+        if (incomeId === 'HIC' && lendingId === 'LNX') {
+            return 'Developed';
+        }
+
+        // 2. Emerging Markets (Major EM economies)
+        const EM_ISO = ['BRA', 'CHN', 'IND', 'MEX', 'ZAF', 'IDN', 'TUR', 'POL', 'SAU', 'EGY', 'THA', 'MYS', 'PHL', 'CHL', 'COL', 'PER', 'VNM', 'KAZ'];
+        if (EM_ISO.includes(iso3)) return 'Emerging';
+
+        // 3. Frontier (Lower middle / Low income or IDA lending)
+        if (incomeId === 'LIC' || lendingId === 'IDX') return 'Frontier';
+
+        // 4. Developing (Rest of Middle income)
+        return 'Developing';
+    },
+
+    mapRegion(wbRegion: string, iso3: string): 'LATAM' | 'EMEA' | 'ASIA' | 'G10' {
+        // Heuristic mapping to dashboard categories
+        if (iso3 === 'USA' || iso3 === 'CAN' || iso3 === 'GBR' || iso3 === 'DEU' || iso3 === 'FRA' || iso3 === 'JPN' || iso3 === 'ITA') {
+            return 'G10';
+        }
         if (wbRegion.includes('Latin America')) return 'LATAM';
         if (wbRegion.includes('Europe') || wbRegion.includes('Middle East') || wbRegion.includes('Africa')) return 'EMEA';
         if (wbRegion.includes('Asia')) return 'ASIA';
-        if (wbRegion.includes('North America')) return 'G10'; // Approximation
-        return 'G10';
+        if (wbRegion.includes('North America')) return 'G10';
+        return 'EMEA';
     },
 
     async getLatestMacroData(countryId: string): Promise<Partial<MacroIndicator>> {
@@ -109,6 +133,11 @@ export const WorldBankService = {
         }
 
         return latest;
+    },
+
+    async getGlobalMacroData(years: number = 10): Promise<MacroIndicator[]> {
+        // Fetch data for the "World" aggregate
+        return this.getHistoricalMacroData('WLD', years);
     },
 
     async getHistoricalMacroData(countryId: string, years: number = 10): Promise<MacroIndicator[]> {

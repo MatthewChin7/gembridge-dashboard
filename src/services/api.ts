@@ -143,6 +143,46 @@ export const MacroService = {
             console.warn(`Fetch failed for ${countryId}`, e);
             return undefined;
         }
+    },
+
+    getGlobalMacroData: async (years: number = 10): Promise<MacroIndicator[]> => {
+        try {
+            const [history, forecasts] = await Promise.all([
+                WorldBankService.getGlobalMacroData(years),
+                RealIMFService.getForecasts('WLD')
+            ]);
+
+            const dataMap = new Map<string, MacroIndicator>();
+
+            history.forEach(d => {
+                const year = d.date.substring(0, 4);
+                dataMap.set(year, d);
+            });
+
+            forecasts.forEach(d => {
+                const year = d.date.substring(0, 4);
+                if (dataMap.has(year)) {
+                    const existing = dataMap.get(year)!;
+                    dataMap.set(year, {
+                        ...existing,
+                        gdpGrowth: d.gdpGrowth ?? existing.gdpGrowth,
+                        cpiYoY: d.cpiYoY ?? existing.cpiYoY,
+                        govDebtToGdp: d.govDebtToGdp ?? existing.govDebtToGdp,
+                        currentAccountToGdp: d.currentAccountToGdp ?? existing.currentAccountToGdp,
+                        source: existing.source + ' + IMF Forecast'
+                    });
+                } else {
+                    dataMap.set(year, d);
+                }
+            });
+
+            return Array.from(dataMap.values()).sort((a, b) =>
+                new Date(b.date).getTime() - new Date(a.date).getTime()
+            );
+        } catch (e) {
+            console.warn('Error fetching global macro data', e);
+            return WorldBankService.getGlobalMacroData(years);
+        }
     }
 };
 

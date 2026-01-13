@@ -1,4 +1,5 @@
-import { LayoutDashboard, BarChart2, Zap, Globe, Radio } from 'lucide-react';
+import { LayoutDashboard, BarChart2, Zap, Globe, Radio, CreditCard } from 'lucide-react';
+import logo from '../../assets/logo.png';
 
 interface SidebarProps {
     activeView: string;
@@ -8,6 +9,7 @@ interface SidebarProps {
 export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
     const menuItems = [
         { id: 'OVERVIEW', icon: LayoutDashboard, label: 'Overview' },
+        { id: 'CREDIT', icon: CreditCard, label: 'Credit (BETA)' },
         { id: 'COMPARATIVE', icon: BarChart2, label: 'Comparative (BETA)' },
         { id: 'SIGNALS', icon: Zap, label: 'Signals (BETA)' },
         { id: 'CALENDAR', icon: Globe, label: 'Calendar (BETA)' },
@@ -18,7 +20,7 @@ export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
         <aside className="sidebar">
             <div style={{ padding: '16px', borderBottom: '1px solid var(--bg-tertiary)' }}>
                 <img
-                    src="/src/assets/logo.png"
+                    src={logo}
                     alt="Gembridge"
                     style={{ height: '24px', marginBottom: '8px', filter: 'grayscale(100%) contrast(1000%) brightness(100%) sepia(100%) hue-rotate(30deg) saturate(500%)' }} // Attempt to make logo amber-ish
                 />

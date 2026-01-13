@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 import { MacroSnapshot } from '../components/Dashboard/MacroSnapshot';
 
 import { CountryDetail } from './CountryDetail';
+import { WatchlistLegend } from '../components/Dashboard/WatchlistLegend';
 
 interface CountryOverviewProps {
     desk?: 'FX' | 'RATES' | 'EM';
@@ -15,6 +16,7 @@ export const CountryOverview = ({ desk }: CountryOverviewProps) => {
     const [latestData, setLatestData] = useState<Record<string, MacroIndicator>>({});
     const [searchQuery, setSearchQuery] = useState('');
     const [filterRegion, setFilterRegion] = useState<string>('ALL');
+    const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['Developed', 'Emerging', 'Developing', 'Frontier']);
     const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
 
     useEffect(() => {
@@ -30,6 +32,18 @@ export const CountryOverview = ({ desk }: CountryOverviewProps) => {
         });
     }, [countries]);
 
+    const toggleStatus = (status: string) => {
+        if (status === 'ALL') {
+            setSelectedStatuses(['Developed', 'Emerging', 'Developing', 'Frontier']);
+            return;
+        }
+        setSelectedStatuses(prev =>
+            prev.includes(status)
+                ? prev.filter(s => s !== status)
+                : [...prev, status]
+        );
+    };
+
     const getSortedAndFilteredCountries = () => {
         let result = [...countries];
 
@@ -44,6 +58,12 @@ export const CountryOverview = ({ desk }: CountryOverviewProps) => {
         if (filterRegion !== 'ALL') {
             result = result.filter(c => c.region === filterRegion);
         }
+
+        // Economy Filter (Multi-select)
+        result = result.filter(c => {
+            if (!c.developmentStatus) return true;
+            return selectedStatuses.includes(c.developmentStatus);
+        });
 
         // Search Filter
         if (searchQuery) {
@@ -76,7 +96,7 @@ export const CountryOverview = ({ desk }: CountryOverviewProps) => {
                             {desk ? `${desk} Desk Monitor` : 'Sovereign Watchlist'}
                         </h1>
                     </div>
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <div style={{ position: 'relative' }}>
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={12} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                             <input
@@ -91,16 +111,37 @@ export const CountryOverview = ({ desk }: CountryOverviewProps) => {
                                     background: '#000',
                                     color: 'var(--text-primary)',
                                     outline: 'none',
-                                    width: '180px',
+                                    width: '120px',
                                     fontSize: '11px',
                                     fontFamily: 'var(--font-mono)',
                                     textTransform: 'uppercase'
                                 }}
                             />
                         </div>
-                        <button className="btn" onClick={cycleFilter} style={{ fontSize: '11px' }}>
+                        <button className="btn" onClick={cycleFilter} style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>
                             REGION: {filterRegion}
                         </button>
+                        <div style={{ display: 'flex', gap: '1px', background: 'var(--bg-tertiary)', padding: '1px', borderRadius: '2px' }}>
+                            {['Developed', 'Emerging', 'Developing', 'Frontier'].map(status => (
+                                <button
+                                    key={status}
+                                    onClick={() => toggleStatus(status)}
+                                    title={status}
+                                    style={{
+                                        padding: '4px 6px',
+                                        fontSize: '9px',
+                                        border: 'none',
+                                        background: selectedStatuses.includes(status) ? 'var(--text-primary)' : '#000',
+                                        color: selectedStatuses.includes(status) ? '#000' : 'var(--text-tertiary)',
+                                        cursor: 'pointer',
+                                        fontWeight: 'bold',
+                                        borderRadius: '1px'
+                                    }}
+                                >
+                                    {status[0]}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
@@ -116,6 +157,7 @@ export const CountryOverview = ({ desk }: CountryOverviewProps) => {
                         )
                     ))}
                 </div>
+                <WatchlistLegend />
             </div>
 
             {selectedCountry && (

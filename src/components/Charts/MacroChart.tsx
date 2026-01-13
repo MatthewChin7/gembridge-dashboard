@@ -223,6 +223,23 @@ export const MacroChart = ({ data, metrics, dataKey, color = '#ff9900', title }:
                                 legendType="none" // Don't duplicate in legend (we use custom legend anyway)
                             />
                         ))}
+
+                        {/* Render Global Average Lines (Dotted and Thinner) */}
+                        {activeMetrics.map(m => (
+                            <Line
+                                key={`${m.key}_avg`}
+                                yAxisId={m.yAxisId || 'right'}
+                                type="linear"
+                                dataKey={`${m.key}_avg`}
+                                stroke={m.color}
+                                strokeWidth={1}
+                                strokeDasharray="2 2"
+                                dot={false}
+                                isAnimationActive={false}
+                                name={`Global ${m.label}`}
+                                legendType="none"
+                            />
+                        ))}
                     </ComposedChart>
                 </ResponsiveContainer>
             </div>

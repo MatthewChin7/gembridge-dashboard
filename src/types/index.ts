@@ -12,11 +12,16 @@ export interface IMFProgram {
     status: 'Active' | 'Completed' | 'Terminated';
 }
 
+export type DevelopmentStatus = 'Developed' | 'Emerging' | 'Developing' | 'Frontier';
+
 export interface Country {
     id: string; // ISO code e.g. "BRA"
     name: string;
     region: Region;
     currency: string;
+    incomeLevel?: string;
+    lendingType?: string;
+    developmentStatus?: DevelopmentStatus;
 }
 
 export interface MacroIndicator {
