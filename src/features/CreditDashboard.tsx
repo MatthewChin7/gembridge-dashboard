@@ -35,8 +35,8 @@ export const CreditDashboard: React.FC = () => {
         setIsLoading(true);
         try {
             const [bondsRes, curveRes] = await Promise.all([
-                fetch(`http://localhost:8000/credit/bonds/${selectedCountry}`),
-                fetch(`http://localhost:8000/credit/curve/${selectedCountry}?type=${curveType}`)
+                fetch(`/api/backend/credit/bonds/${selectedCountry}`),
+                fetch(`/api/backend/credit/curve/${selectedCountry}?type=${curveType}`)
             ]);
 
             const bData = await bondsRes.json();

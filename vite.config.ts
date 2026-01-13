@@ -11,6 +11,12 @@ export default defineConfig({
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api\/imf/, ''),
                 secure: false,
+            },
+            '/api/backend': {
+                target: 'http://localhost:8000',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api\/backend/, ''),
+                secure: false,
             }
         }
     }

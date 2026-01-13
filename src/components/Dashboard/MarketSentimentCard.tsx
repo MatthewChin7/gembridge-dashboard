@@ -41,7 +41,7 @@ export const MarketSentimentCard: React.FC<MarketSentimentCardProps> = ({ market
         const fetchHistory = async () => {
             setIsLoading(true);
             try {
-                const response = await fetch(`http://localhost:8000/history/${market.id}`);
+                const response = await fetch(`/api/backend/history/${market.id}`);
                 const data = await response.json();
                 if (data && data.length > 0) {
                     // Enrich data with numeric fields if needed

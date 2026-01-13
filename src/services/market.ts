@@ -47,8 +47,7 @@ export const MarketService = {
     },
 
     async getPredictionMarkets(countryCode: string): Promise<any[]> {
-        // Backend URL (assumed running locally on port 8000)
-        const url = `http://localhost:8000/markets/${countryCode}`;
+        const url = `/api/backend/markets/${countryCode}`;
 
         try {
             const response = await fetch(url);
