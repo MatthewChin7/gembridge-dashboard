@@ -14,6 +14,7 @@ class SovereignRVEngine:
 
     def nss_model(self, m, b0, b1, b2, b3, t1, t2):
         """Nelson-Siegel-Svensson (NSS) model for the yield curve."""
+        m = np.array(m)
         # Prevent division by zero
         m = np.where(m <= 0, 1e-6, m)
         
@@ -30,6 +31,8 @@ class SovereignRVEngine:
 
     def fit_curve(self, maturities, yields):
         """Optimizes NSS parameters to fit the provided market yields."""
+        maturities = np.array(maturities)
+        yields = np.array(yields)
         if len(maturities) < 6:
             logger.warning("Fewer than 6 points provided for NSS fit. Results may be unstable.")
         
@@ -92,7 +95,7 @@ def get_nss_curve_points(params, max_maturity=30):
     engine = SovereignRVEngine()
     y_values = engine.nss_model(m_range, *params)
     
-    return [{"maturity": m, "y": y} for m, y in zip(m_range, y_values)]
+    return [{"maturity": float(m), "y": float(y)} for m, y in zip(m_range, y_values)]
 
 if __name__ == "__main__":
     # Simple test

@@ -99,7 +99,7 @@ const METRIC_GROUPS: {
 
 export const CountryDetail = ({ country, onClose }: CountryDetailProps) => {
     const [activeTab, setActiveTab] = useState<'MACRO' | 'MARKET'>('MACRO');
-    const [timeRange, setTimeRange] = useState<number>(60); // Default to 5 Years
+    const [timeRange, setTimeRange] = useState<number>(120); // Default to 10 Years
     const [viewMode, setViewMode] = useState<'Monthly' | 'Annual'>('Annual');
     // Multi-metric selection state
     const [selectedMetrics, setSelectedMetrics] = useState<Set<keyof MacroIndicator>>(new Set(['gdpGrowth']));

@@ -172,7 +172,7 @@ async def get_sovereign_curve(country: str, type: str = "NSS"):
         
         f = interp1d(tenors, spreads, kind='linear', fill_value='extrapolate')
         m_range = np.linspace(0.1, 30, 100)
-        points = [{"maturity": m, "y": float(f(m)) + rf} for m in m_range]
+        points = [{"maturity": float(m), "y": float(f(m)) + rf} for m in m_range]
         return {"points": points, "is_mock": not bbg_service.is_connected}
         
     return []

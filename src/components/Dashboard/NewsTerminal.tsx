@@ -34,10 +34,14 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
     const fetchNews = async () => {
         setLoading(true);
         try {
-            let query = "Emerging Markets Economy Finance";
-            // If "Company News" mode or generic, use country context
+            let query = '("Emerging Markets" AND (Economy OR Finance OR "Central Bank"))';
+
             if (selectedCountries.length > 0) {
-                query = selectedCountries.map(c => `${c} Economy`).join(' OR ');
+                // Focus on high-impact keywords to avoid generic section pages
+                const countryQuery = selectedCountries.map(c =>
+                    `(${c} AND ("breaking news" OR "central bank" OR "bond market" OR "fiscal policy" OR "inflation"))`
+                ).join(' OR ');
+                query = countryQuery;
             }
 
             // Public RSS to JSON Proxy
@@ -48,14 +52,26 @@ export const NewsTerminal = ({ selectedCountries = [] }: NewsTerminalProps) => {
             const data = await res.json();
 
             if (data.status === 'ok' && data.items) {
-                const items = data.items.map((item: any) => ({
-                    title: item.title,
-                    link: item.link,
-                    pubDate: item.pubDate,
-                    source: item.author || 'Google News',
-                    guid: item.guid,
-                    description: item.description
-                }));
+                const items = data.items
+                    .map((item: any) => ({
+                        title: item.title,
+                        link: item.link,
+                        pubDate: item.pubDate,
+                        source: item.author || 'News',
+                        guid: item.guid,
+                        description: item.description
+                    }))
+                    // Filter out generic section headers (common Google News behavior for broad queries)
+                    .filter((item: any) => {
+                        const titleLower = item.title.toLowerCase();
+                        const isGenericSection =
+                            titleLower.endsWith(' - the guardian') && (titleLower.includes('economy') || titleLower.includes('business')) ||
+                            titleLower.includes('latest news') && item.title.split(' ').length < 5 ||
+                            titleLower.includes('google news') ||
+                            item.title.length < 15; // Too short to be a real headline
+                        return !isGenericSection;
+                    });
+
                 setNews(items);
                 setLastUpdated(new Date());
             }
